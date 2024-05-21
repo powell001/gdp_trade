@@ -1,0 +1,197 @@
+,Unnamed: 0,Unnamed: 1
+4,512 AFG,Afghanistan
+5,914 ALB,Albania
+6,612 DZA,Algeria
+7,171 AND,Andorra
+8,614 AGO,Angola
+9,311 ATG,Antigua and Barbuda
+10,213 ARG,Argentina
+11,911 ARM,Armenia
+12,314 ABW,Aruba
+13,193 AUS,Australia
+14,122 AUT,Austria
+15,912 AZE,Azerbaijan
+16,313 BHS,The Bahamas
+17,419 BHR,Bahrain
+18,513 BGD,Bangladesh
+19,316 BRB,Barbados
+20,913 BLR,Belarus
+21,124 BEL,Belgium
+22,339 BLZ,Belize
+23,638 BEN,Benin
+24,514 BTN,Bhutan
+25,218 BOL,Bolivia
+26,963 BIH,Bosnia and Herzegovina
+27,616 BWA,Botswana
+28,223 BRA,Brazil
+29,516 BRN,Brunei Darussalam
+30,918 BGR,Bulgaria
+31,748 BFA,Burkina Faso
+32,618 BDI,Burundi
+33,624 CPV,Cabo Verde
+34,522 KHM,Cambodia
+35,622 CMR,Cameroon
+36,156 CAN,Canada
+37,626 CAF,Central African Republic
+38,628 TCD,Chad
+39,228 CHL,Chile
+40,924 CHN,China
+41,233 COL,Colombia
+42,632 COM,Comoros
+43,636 COD,Democratic Republic of the Congo
+45,634 COG,Republic of Congo
+46,238 CRI,Costa Rica
+47,662 CIV,Côte d'Ivoire
+48,960 HRV,Croatia
+49,423 CYP,Cyprus
+50,935 CZE,Czech Republic
+51,128 DNK,Denmark
+52,611 DJI,Djibouti
+53,321 DMA,Dominica
+54,243 DOM,Dominican Republic
+55,248 ECU,Ecuador
+56,469 EGY,Egypt
+57,253 SLV,El Salvador
+58,642 GNQ,Equatorial Guinea
+59,643 ERI,Eritrea
+60,939 EST,Estonia
+61,734 SWZ,Eswatini
+62,644 ETH,Ethiopia
+63,819 FJI,Fiji
+64,172 FIN,Finland
+65,132 FRA,France
+66,646 GAB,Gabon
+67,648 GMB,The Gambia
+68,915 GEO,Georgia
+69,134 DEU,Germany
+70,652 GHA,Ghana
+71,174 GRC,Greece
+72,328 GRD,Grenada
+73,258 GTM,Guatemala
+74,656 GIN,Guinea
+75,654 GNB,Guinea-Bissau
+76,336 GUY,Guyana
+77,263 HTI,Haiti
+78,268 HND,Honduras
+79,532 HKG,Hong Kong SAR
+80,944 HUN,Hungary
+81,176 ISL,Iceland
+82,534 IND,India
+83,536 IDN,Indonesia
+84,429 IRN,Iran
+85,433 IRQ,Iraq
+4,178 IRL,Ireland
+5,436 ISR,Israel
+6,136 ITA,Italy
+7,343 JAM,Jamaica
+8,158 JPN,Japan
+9,439 JOR,Jordan
+10,916 KAZ,Kazakhstan
+11,664 KEN,Kenya
+12,826 KIR,Kiribati
+13,542 KOR,Korea
+14,967 UVK,Kosovo
+15,443 KWT,Kuwait
+16,917 KGZ,Kyrgyz Republic
+17,544 LAO,Lao P.D.R.
+18,941 LVA,Latvia
+19,446 LBN,Lebanon
+20,666 LSO,Lesotho
+21,668 LBR,Liberia
+22,672 LBY,Libya
+23,946 LTU,Lithuania
+24,137 LUX,Luxembourg
+25,546 MAC,Macao SAR
+26,674 MDG,Madagascar
+27,676 MWI,Malawi
+28,548 MYS,Malaysia
+29,556 MDV,Maldives
+30,678 MLI,Mali
+31,181 MLT,Malta
+32,867 MHL,Marshall Islands
+33,682 MRT,Mauritania
+34,684 MUS,Mauritius
+35,273 MEX,Mexico
+36,868 FSM,Micronesia
+37,921 MDA,Moldova
+38,948 MNG,Mongolia
+39,943 MNE,Montenegro
+40,686 MAR,Morocco
+41,688 MOZ,Mozambique
+42,518 MMR,Myanmar
+43,728 NAM,Namibia
+44,836 NRU,Nauru
+45,558 NPL,Nepal
+46,138 NLD,The Netherlands
+47,196 NZL,New Zealand
+48,278 NIC,Nicaragua
+49,692 NER,Niger
+50,694 NGA,Nigeria
+51,962 MKD,North Macedonia
+52,142 NOR,Norway
+53,449 OMN,Oman
+54,564 PAK,Pakistan
+55,565 PLW,Palau
+56,283 PAN,Panama
+57,853 PNG,Papua New Guinea
+58,288 PRY,Paraguay
+59,293 PER,Peru
+60,566 PHL,Philippines
+61,964 POL,Poland
+62,182 PRT,Portugal
+63,359 PRI,Puerto Rico
+64,453 QAT,Qatar
+65,968 ROU,Romania
+66,922 RUS,Russia
+67,714 RWA,Rwanda
+68,862 WSM,Samoa
+69,135 SMR,San Marino
+70,716 STP,São Tomé and Príncipe
+72,456 SAU,Saudi Arabia
+73,722 SEN,Senegal
+74,942 SRB,Serbia
+75,718 SYC,Seychelles
+76,724 SLE,Sierra Leone
+77,576 SGP,Singapore
+78,936 SVK,Slovak Republic
+79,961 SVN,Slovenia
+80,813 SLB,Solomon Islands
+81,726 SOM,Somalia
+82,199 ZAF,South Africa
+83,733 SSD,South Sudan
+84,184 ESP,Spain
+85,524 LKA,Sri Lanka
+86,361 KNA,St. Kitts and Nevis
+4,362 LCA,St. Lucia
+5,364 VCT,St. Vincent and the Grenadines
+7,732 SDN,Sudan
+8,366 SUR,Suriname
+9,144 SWE,Sweden
+10,146 CHE,Switzerland
+11,463 SYR,Syria
+12,528 TWN,Taiwan Province of China
+13,923 TJK,Tajikistan
+14,738 TZA,Tanzania
+15,578 THA,Thailand
+16,537 TLS,Timor-Leste
+17,742 TGO,Togo
+18,866 TON,Tonga
+19,369 TTO,Trinidad and Tobago
+21,744 TUN,Tunisia
+22,186 TUR,Türkiye
+23,925 TKM,Turkmenistan
+24,869 TUV,Tuvalu
+25,746 UGA,Uganda
+26,926 UKR,Ukraine
+27,466 ARE,United Arab Emirates
+28,112 GBR,United Kingdom
+29,111 USA,United States
+30,298 URY,Uruguay
+31,927 UZB,Uzbekistan
+32,846 VUT,Vanuatu
+33,299 VEN,Venezuela
+34,582 VNM,Vietnam
+35,487 WBG,West Bank and Gaza
+36,474 YEM,Yemen
+38,754 ZMB,Zambia
+39,698 ZWE,Zimbabwe
