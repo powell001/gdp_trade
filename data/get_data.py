@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import openpyxl
 import colorama
 
-
 # based on: 
 # main paper: chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://www.imf.org/external/pubs/ft/wp/2003/wp0337.pdf
 
@@ -23,45 +22,143 @@ import colorama
 ######
 # main trade data
 ######
-dt1 = pd.read_csv(r"data\DOT_05-20-2024 10-49-23-10_timeSeries.csv")
-dt1.to_csv("tmp1.csv")
-printme(dt1)
+def maintradedata():
+    trade_data1 = pd.read_csv(r"data\DOT_05-20-2024 10-49-23-10_timeSeries.csv")
+    printme(trade_data1)
+
+    ######
+    # merge iso3
+    ######
+    iso1 = pd.read_csv(r"data\pdf_extractor\imf_iso3codes_usethese.csv")
+    trade_data2 = trade_data1.merge(iso1, left_on="Country Code", right_on="imf_code", how = "left")
+    trade_data2.rename(columns={"iso3_code": "iso3_code_importer"}, inplace = True)
+    iso1 = pd.read_csv(r"data\pdf_extractor\imf_iso3codes_usethese.csv")
+    trade_data3 = trade_data2.merge(iso1, left_on="Counterpart Country Code", right_on="imf_code", how = "left")
+    trade_data3.rename(columns={"iso3_code": "iso3_code_exporter"}, inplace = True)
+    trade_data3.drop(columns=['Unnamed: 83', 'Unnamed: 0_x', 'imf_code_x','Unnamed: 0_y', 'imf_code_y'], inplace=True)
+
+    # Keep this, it helps with stacking below
+    trade_data3.fillna(0, inplace=True)
+
+    # necessary to remove 'e's from data, so already beginning to subsetting
+    trade_data3 = trade_data3[trade_data3['Attribute'] == 'Value'] 
+
+    # remove: dont want aggregates and 'lost'countries
+    aggs = [1, 80, 92, 110, 126,163, 188, 200, 205, 399, 400, 405, 459, 473, 489, 505, 598, 603, 799, 934, 965, 974,605, 884, 898, 899, 901, 903, 910, 938, 998]
+    trade_data3 = trade_data3[~trade_data3['Counterpart Country Code'].isin(aggs)]
+
+    return trade_data3
+
+maintradedata1 = maintradedata()
 
 ######
-# merge iso3
+### Select state
 ######
-#importer
-iso1 = pd.read_csv("data\pdf_extractor\imf_iso3codes_usethese.csv")
-dt2 = dt1.merge(iso1, left_on="Country Code", right_on="imf_code", how = "left")
-dt2.rename(columns={"iso3_code": "iso3_code_importer"}, inplace = True)
-iso1 = pd.read_csv("data\pdf_extractor\imf_iso3codes_usethese.csv")
-dt3 = dt2.merge(iso1, left_on="Counterpart Country Code", right_on="imf_code", how = "left")
-dt3.rename(columns={"iso3_code": "iso3_code_exporter"}, inplace = True)
-dt3.drop(columns=['Unnamed: 83', 'Unnamed: 0_x', 'imf_code_x','Unnamed: 0_y', 'imf_code_y'], inplace=True)
+def chooseCountry(mtd1, state):
 
-# ### NLD test
-nld1 = dt3[dt3['iso3_code_importer']=='NLD']
-nld1 = nld1[nld1['Indicator Name']=='Goods, Value of Imports, Cost, Insurance, Freight (CIF), US Dollars']
-nld1 = nld1[nld1['Attribute'] == 'Value'] #this removes 'e'
-nld1.iloc[:, np.r_[40:82]] =  nld1.iloc[:, np.r_[40:82]].astype(float)
-printme(nld1)
-nld1.to_csv("tmp4.csv")
+    state1 = mtd1[mtd1['iso3_code_importer']==state]
+    state1 = state1[state1['Indicator Name']=='Goods, Value of Imports, Cost, Insurance, Freight (CIF), US Dollars']
 
-# # dont want aggregates
-# aggs = [1, 80, 92, 110, 163, 200, 205, 399, 400, 405, 489, 505, 598, 884, 901, 903, 910, 938, 998]
-# nld2 = nld2[~nld2['Counterpart Country Code'].isin(aggs)]
+    ### choose index
+    state1['Relationship_1'] = state1['Country Code'].astype(str) + "-" + state1['Counterpart Country Code'].astype(str)
+    state1['Relationship_2'] = state1['iso3_code_importer'].astype(str) + "-" + state1['iso3_code_exporter'].astype(str)
+    state1.set_index(['Relationship_2'], inplace = True)
 
-# ###
-# nld2['Relationship'] = nld2['Country Code'].astype(str) + "-" + nld2['Counterpart Country Code'].astype(str)
-# printme(nld2)
-# nld3 = nld2.iloc[:, np.r_[4:80]]
-# nld3.set_index(['Relationship'], inplace = True)
-# nld3 = nld3.astype(float)
-# printme(nld3)
+    ### unique countries
+    print("Unique counter parties: ", state1['iso3_code_exporter'].nunique())
+    
+    ### select only actual trade data
+    state3 = state1.iloc[:, np.r_[7:83]]  # 19 is 1960, 52 is 1992 
+    state3 = state3.astype(float)
+
+    ######
+    # pivot
+    ######
+    state_stacked = state3.stack().to_frame()
+    state_stacked['Year'] = state_stacked.index.get_level_values(1)
+    #state_stacked['Country'] = state_stacked.index.get_level_values(0)
+
+    state_stacked.index = state_stacked.index.get_level_values(0)
+    state_stacked.columns = ['Import', 'Year']
+    print(state_stacked)
+
+    ######
+    # duplicates
+    ######
+    #state_stacked.drop_duplicates(inplace = True)
+
+    return state_stacked
+
+dt1 = chooseCountry(maintradedata1, "NLD")
+dt1.to_csv("tmpNLD.csv")
+
+def checkindex():
+    from itertools import groupby
+    countitems = dt1.index.tolist()
+    # Group and count similar records
+    res = []
+    x = list(set(countitems))
+    for i in x:
+        a = countitems.count(i)
+        b = "".join(i)
+        res.append((a, b))
+    # printing result
+    print("Grouped and counted list is : " + str(res))
+
+#checkindex()
+
+##############################################
+### NLD add additional data
+##############################################
+######
+# distance
+######
+dist1 = pd.read_csv(r"C:\Users\jpark\VSCode\gdp_trade\data\dist_cepii.csv")
+
+nld1 = dist1[dist1['iso_o'] == 'NLD']
+nld1['Relationship_1'] = nld1['iso_o'].astype(str) + "-" + nld1['iso_d'].astype(str)
+nld1.set_index(['Relationship_1'], inplace=True)
+nld_mrd1 = pd.merge(dt1, nld1, left_index = True, right_index = True, how = "left")
+nld_mrd1.index = dt1.index
+
+selectthesecols = [0,1,2,3,4,5,6,7,8,11,13]
+nld_mrd1 = nld_mrd1.iloc[:, selectthesecols]
+nld_mrd1.to_csv("tmp40404.csv")
+
+######
+# Country information (of counter country)
+######
+geo_cepii = pd.read_csv(r"C:\Users\jpark\VSCode\gdp_trade\data\geo_cepii.csv")
+print(geo_cepii.columns)
+geo_cepii = geo_cepii.loc[:, ['iso3', 'area', 'landlocked', 'lat', 'lon', 'langoff_1', 'lang20_1', 'colonizer1']]
+geo_cepii.drop_duplicates(subset=['iso3'], keep='last', inplace=True)
+
+nld_mrg2 = pd.merge(nld_mrd1, geo_cepii, left_on="iso_d", right_on="iso3", how="left")
+nld_mrg2['Year'] = nld_mrg2['Year'].astype(int)
+
+nld_mrg2['tmp_key'] = nld_mrg2['iso_o'] + "_" + nld_mrg2['Year'].astype(str)
+nld_mrg2['tmp_key_2'] = nld_mrg2['iso_d'] + "_" + nld_mrg2['Year'].astype(str)
+nld_mrg2.to_csv("tmp666.csv")
+
+#######
+# pwt1001 data (of both countries)
+#######
+pwtdata = pd.read_excel(r'C:\Users\jpark\VSCode\gdp_trade\data\pwt1001.xlsx', sheet_name="Data")
+pwtdata['tmp_key'] = pwtdata['countrycode'] + "_" + pwtdata['year'].astype(str)
+pwtdata['tmp_key_2'] = pwtdata['countrycode'] + "_" + pwtdata['year'].astype(str)
+pwtdata = pwtdata[['tmp_key', 'countrycode', 'year', 'rgdpo', 'pop', 'tmp_key_2']]  ############################## Make selections here for pwt data ###############
+
+pwtdata.to_csv("xyz.csv")
+
+nld_pwt = pwtdata[pwtdata['countrycode'] == 'NLD']
+nld_pwt.to_csv("nld_pwt.csv")
+
+# first connect with NLD
+nld_mrg3 = pd.merge(nld_mrg2, nld_pwt, left_on="tmp_key", right_on="tmp_key", how="left")
+print(nld_mrg3)
+nld_mrg3.to_csv("tmp1121.csv")
 
 
-# nld3.T.plot()
-# plt.show()
-# nld3.to_csv('tmp3.csv')
-
-# print(nld2)
+# now use all data, in pwtdata
+nld_mrg4 = pd.merge(nld_mrg3, pwtdata, left_on="tmp_key_2_x", right_on="tmp_key_2", how="left")
+nld_mrg4.to_csv("tmp333333.csv")
