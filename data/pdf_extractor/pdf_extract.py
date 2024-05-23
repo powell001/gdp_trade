@@ -1,6 +1,6 @@
 import pandas as pd
 from tabula import read_pdf
-from tabulate import tabulate
+#from tabulate import tabulate
 
 # extract all the tables in the PDF file
 abc = read_pdf(r"data\pdf_extractor\imf_iso3.pdf", pages="all")   #address of file location
@@ -18,6 +18,8 @@ imf_iso3codes = pd.DataFrame(imf_iso3codes['Unnamed: 0'].str.split(' ').tolist()
 
 toAdd = pd.DataFrame(data=[354,352,351,323,887,823,319,326,859,816,954,928,839,829,312,187,353])
 toAdd.columns = ['imf_code'] 
-toAdd['iso3_code']= ['CUW','MAF','MSR','FLK','PYF','GIB','BMU','GRL','ASM','FRO','PRK','CUB','NCL','GUM','AIA','VAT','ANX']
+toAdd['iso3_code']= ['CUW','MAF','MSR','FLK','PYF','GIB','BMU','GRL','ASM','FRO','PRK','CUB','NCL','GUM','AIA','VAT','ANT']
 imf_iso3codes = pd.concat([imf_iso3codes, toAdd])
 imf_iso3codes.to_csv("data\pdf_extractor\imf_iso3codes_usethese.csv")
+
+# Netherlands Antilles: check iso3 353 or 530 or 525!!!

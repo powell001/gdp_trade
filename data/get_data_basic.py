@@ -89,7 +89,9 @@ def chooseCountry(mtd1, state):
 
     return state_stacked
 
-dt1 = chooseCountry(maintradedata1, "NLD")
+COUNTRY = "JPN"
+
+dt1 = chooseCountry(maintradedata1, COUNTRY)
 dt1.to_csv("tmpNLD.csv")
 
 def checkindex():
@@ -107,58 +109,93 @@ def checkindex():
 
 #checkindex()
 
-##############################################
-### NLD add additional data
-##############################################
-######
-# distance
-######
-dist1 = pd.read_csv(r"C:\Users\jpark\VSCode\gdp_trade\data\dist_cepii.csv")
+def cepiidata(data, COUNTRY):
+    ##############################################
+    ### NLD add additional data
+    ##############################################
+    ######
+    # distance
+    ######
+    dist1 = pd.read_csv(r"C:\Users\jpark\VSCode\gdp_trade\data\dist_cepii.csv")
+    print(dist1)
+    printme(dist1)
+    dist1['iso_o'].replace('ROM', 'ROU', regex=True, inplace=True)
+    dist1['iso_d'].replace('ROM', 'ROU', regex=True, inplace=True)
+    dist1['iso_o'].replace('YUG', 'MNE', regex=True, inplace=True)
+    dist1['iso_d'].replace('YUG', 'MNE', regex=True, inplace=True)
 
-nld1 = dist1[dist1['iso_o'] == 'NLD']
-nld1['Relationship_1'] = nld1['iso_o'].astype(str) + "-" + nld1['iso_d'].astype(str)
-nld1.set_index(['Relationship_1'], inplace=True)
-nld_mrd1 = pd.merge(dt1, nld1, left_index = True, right_index = True, how = "left")
-nld_mrd1.index = dt1.index
+    nld1 = dist1[dist1['iso_o'] == COUNTRY]
+    nld1.to_csv("tmpnld1.csv")
 
-selectthesecols = [0,1,2,3,4,5,6,7,8,11,13]
-nld_mrd1 = nld_mrd1.iloc[:, selectthesecols]
-nld_mrd1.to_csv("tmp40404.csv")
+    #nld1['Relationship_1'] = nld1['iso_o'].astype(str) + "-" + nld1['iso_d'].astype(str)
+    nld1['Relationship_1'] = nld1['iso_o'] + "-" + nld1['iso_d']
+    nld1.set_index(['Relationship_1'], inplace=True)
 
-######
-# Country information (of counter country)
-######
-geo_cepii = pd.read_csv(r"C:\Users\jpark\VSCode\gdp_trade\data\geo_cepii.csv")
-print(geo_cepii.columns)
-geo_cepii = geo_cepii.loc[:, ['iso3', 'area', 'landlocked', 'lat', 'lon', 'langoff_1', 'lang20_1', 'colonizer1']]
-geo_cepii.drop_duplicates(subset=['iso3'], keep='last', inplace=True)
-
-nld_mrg2 = pd.merge(nld_mrd1, geo_cepii, left_on="iso_d", right_on="iso3", how="left")
-nld_mrg2['Year'] = nld_mrg2['Year'].astype(int)
-
-nld_mrg2['tmp_key'] = nld_mrg2['iso_o'] + "_" + nld_mrg2['Year'].astype(str)
-nld_mrg2['tmp_key_2'] = nld_mrg2['iso_d'] + "_" + nld_mrg2['Year'].astype(str)
-nld_mrg2.to_csv("tmp666.csv")
-
-#######
-# pwt1001 data (of both countries)
-#######
-pwtdata = pd.read_excel(r'C:\Users\jpark\VSCode\gdp_trade\data\pwt1001.xlsx', sheet_name="Data")
-pwtdata['tmp_key'] = pwtdata['countrycode'] + "_" + pwtdata['year'].astype(str)
-pwtdata['tmp_key_2'] = pwtdata['countrycode'] + "_" + pwtdata['year'].astype(str)
-pwtdata = pwtdata[['tmp_key', 'countrycode', 'year', 'rgdpo', 'pop', 'tmp_key_2']]  ############################## Make selections here for pwt data ###############
-
-pwtdata.to_csv("xyz.csv")
-
-nld_pwt = pwtdata[pwtdata['countrycode'] == 'NLD']
-nld_pwt.to_csv("nld_pwt.csv")
-
-# first connect with NLD
-nld_mrg3 = pd.merge(nld_mrg2, nld_pwt, left_on="tmp_key", right_on="tmp_key", how="left")
-print(nld_mrg3)
-nld_mrg3.to_csv("tmp1121.csv")
+    ######## MERGE
+    nld_mrd1 = pd.merge(data, nld1, left_index = True, right_index = True, how = "left")
+    nld_mrd1.index = data.index
+    ########
 
 
-# now use all data, in pwtdata
-nld_mrg4 = pd.merge(nld_mrg3, pwtdata, left_on="tmp_key_2_x", right_on="tmp_key_2", how="left")
-nld_mrg4.to_csv("tmp333333.csv")
+    selectthesecols = [0,1,2,3,4,5,6,7,8,11,13]
+    nld_mrd1 = nld_mrd1.iloc[:, selectthesecols]
+    nld_mrd1.to_csv("tmp40404.csv")
+
+    ######
+    # Country information (of counter country)
+    ######
+    geo_cepii = pd.read_csv(r"C:\Users\jpark\VSCode\gdp_trade\data\geo_cepii.csv")
+
+    geo_cepii['iso3'].replace('ROM', 'ROU', regex=True, inplace=True)
+    geo_cepii['iso3'].replace('YUG', 'MNE', regex=True, inplace=True)
+
+
+    print(geo_cepii.columns)
+    geo_cepii = geo_cepii.loc[:, ['iso3', 'area', 'landlocked', 'lat', 'lon', 'langoff_1', 'lang20_1', 'colonizer1']]
+    geo_cepii.drop_duplicates(subset=['iso3'], keep='last', inplace=True)
+
+    nld_mrg2 = pd.merge(nld_mrd1, geo_cepii, left_on="iso_d", right_on="iso3", how="left")
+    nld_mrg2['Year'] = nld_mrg2['Year'].astype(int)
+
+    nld_mrg2['tmp_key'] = nld_mrg2['iso_o'] + "_" + nld_mrg2['Year'].astype(str)
+    nld_mrg2['tmp_key_2'] = nld_mrg2['iso_d'] + "_" + nld_mrg2['Year'].astype(str)
+    nld_mrg2.to_csv("tmp666.csv")
+    return nld_mrg2
+
+nld_mrg2 = cepiidata(dt1, COUNTRY)
+
+def pwtdata(state, nld_mrg2):
+
+    #######
+    # pwt1001 data (of both countries)
+    #######
+    pwtdata = pd.read_excel(r'C:\Users\jpark\VSCode\gdp_trade\data\pwt1001.xlsx', sheet_name="Data")
+    pwtdata['tmp_key'] = pwtdata['countrycode'] + "_" + pwtdata['year'].astype(str)
+    pwtdata['tmp_key_2'] = pwtdata['countrycode'] + "_" + pwtdata['year'].astype(str)
+    pwtdata = pwtdata[['tmp_key', 'countrycode', 'year', 'rgdpo', 'pop', 'tmp_key_2']]  ############################## Make selections here for pwt data ###############
+
+    pwtdata.to_csv("xyz.csv")
+
+    nld_pwt = pwtdata[pwtdata['countrycode'] == state]
+    nld_pwt.to_csv("nld_pwt.csv")
+
+    # first connect with NLD
+    nld_mrg3 = pd.merge(nld_mrg2, nld_pwt, left_on="tmp_key", right_on="tmp_key", how="left")
+    print(nld_mrg3)
+    nld_mrg3.to_csv("tmp1121.csv")
+
+    # now use all data, in pwtdata
+    nld_mrg4 = pd.merge(nld_mrg3, pwtdata, left_on="tmp_key_2_x", right_on="tmp_key_2", how="left")
+
+    # drop unused columns
+    nld_mrg4.drop(columns = ['iso3', 'tmp_key_x', 'tmp_key_2_x', 'countrycode_x', 'year_x', 'tmp_key_2_y', 'tmp_key_y', 'countrycode_y', 'year_y', 'tmp_key_2'], inplace=True)
+    nld_mrg4.to_csv("tmp333333.csv")
+
+    return nld_mrg4
+
+nld_mrg4 = pwtdata(COUNTRY, nld_mrg2)
+nld_mrg4.dropna(subset = ['iso_o'], inplace=True)
+#nld_final = nld_mrg4.dropna()
+nld_mrg4.to_csv("tmp22222222222222.csv")
+
+print('Unique: ', nld_mrg4.nunique())
