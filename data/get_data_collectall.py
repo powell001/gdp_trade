@@ -6,7 +6,9 @@ import openpyxl
 import colorama
 from myhelpers import printme
 from functools import reduce
-
+import seaborn as sns
+plt.rcParams['figure.figsize'] = (10, 5)
+plt.style.use('bmh')
 
 pd.set_option("display.max_rows", 10)
 pd.set_option("display.max_columns", 1000)
@@ -54,6 +56,8 @@ class Trade_Regression:
         # remove: dont want aggregates and 'lost'countries
         aggs = [1, 80, 92, 110, 126,163, 188, 200, 205, 399, 400, 405, 459, 473, 489, 505, 598, 603, 799, 934, 965, 974,605, 884, 898, 899, 901, 903, 910, 938, 998]
         trade_data3 = trade_data3[~trade_data3['Counterpart Country Code'].isin(aggs)]
+        aggs = [1, 80, 92, 110, 126,163, 188, 200, 205, 399, 400, 405, 459, 473, 489, 505, 598, 603, 799, 934, 965, 974,605, 884, 898, 899, 901, 903, 910, 938, 998]
+        trade_data3 = trade_data3[~trade_data3['Country Code'].isin(aggs)]
 
         return trade_data3
 
@@ -250,7 +254,7 @@ class Trade_Regression:
 
 def runmodel(ImpExp):
     allstates = pd.read_csv(r"data\pdf_extractor\imf_iso3codes_usethese.csv")['iso3_code'].tolist()
-    #allstates = ['NLD']
+    allstates = ['AFG']
     collect1 = []
     for i in allstates:
         print("state: ", i)
@@ -288,52 +292,190 @@ def runmodel(ImpExp):
         # Trade instrument
         #######
         # Numerator: total trade between countries per year
-        tau = onestate1['Export'] + onestate1['Import']
-        gdpgdp_nominal = onestate1['cgdpe_exporter'] * onestate1['cgdpe_importer']
+        onestate1['gdpgdp_nominal'] = onestate1['cgdpe_exporter'] * onestate1['cgdpe_importer']
 
-        onestate1['instrument']  = tau/gdpgdp_nominal
-        onestate1['instrument'].fillna(0, inplace=True) 
+        # key
+        onestate1["key1"] = onestate1['iso_o'] + "_" + onestate1['Year'].astype(str) + "_" + onestate1["iso_d"]
+
 
         collect1.append(onestate1)
 
     out1 = pd.concat(collect1)
 
     if ImpExp == "Import_CIF":
-        out1.to_csv("allStates_AllYears_Imports_CIF.csv")
+        out1.to_csv("data/allStates_AllYears_Imports_CIF.csv")
     else:
-        out1.to_csv("allStates_AllYears_Export_FOB.csv")
+        out1.to_csv("data/allStates_AllYears_Export_FOB.csv")
 
-#"Export_FOB" or "Import_CIF"
+# "Export_FOB" or "Import_CIF"
 # runmodel("Import_CIF")
+
+################
+# Exports seperately
+################
+
+def exportsallcombinations():
+    
+    trade_data1 = pd.read_csv(r"data\DOT_06-02-2024 11-13-24-61_timeSeries.csv")
+    
+    ######
+    # merge iso3
+    ######
+    iso1 = pd.read_csv(r"data\pdf_extractor\imf_iso3codes_usethese.csv")
+    trade_data2 = trade_data1.merge(iso1, left_on="Country Code", right_on="imf_code", how = "left")
+    trade_data2.rename(columns={"iso3_code": "iso3_code_exporter"}, inplace = True)
+    iso1 = pd.read_csv(r"data\pdf_extractor\imf_iso3codes_usethese.csv")
+    trade_data3 = trade_data2.merge(iso1, left_on="Counterpart Country Code", right_on="imf_code", how = "left")
+
+    trade_data3.rename(columns={"iso3_code": "iso3_code_importer"}, inplace = True)
+    trade_data3.drop(columns=['Unnamed: 0_x', 'imf_code_x','Unnamed: 0_y', 'imf_code_y'], inplace=True)
+
+    # Keep this, it helps with stacking below
+    trade_data3.fillna(0, inplace=True)
+
+    # necessary to remove 'e's from data, so already beginning to subsetting
+    trade_data3 = trade_data3[trade_data3['Attribute'] == 'Value'] 
+
+    # remove: dont want aggregates and 'lost'countries
+    aggs = [1, 80, 92, 110, 126,163, 188, 200, 205, 399, 400, 405, 459, 473, 489, 505, 598, 603, 799, 934, 965, 974,605, 884, 898, 899, 901, 903, 910, 938, 998]
+    trade_data3 = trade_data3[~trade_data3['Counterpart Country Code'].isin(aggs)]
+    aggs = [1, 80, 92, 110, 126,163, 188, 200, 205, 399, 400, 405, 459, 473, 489, 505, 598, 603, 799, 934, 965, 974,605, 884, 898, 899, 901, 903, 910, 938, 998]
+    trade_data3 = trade_data3[~trade_data3['Country Code'].isin(aggs)]
+
+    # exports
+    trade_data3 = trade_data3[trade_data3['Indicator Name'] == 'Goods, Value of Exports, Free on board (FOB), US Dollars']
+
+    # create index
+    trade_data3['exporter_importer'] = trade_data3['iso3_code_exporter'].astype(str) + "_" + trade_data3['iso3_code_importer'].astype(str)
+
+    # float needed (not sure why this happens)
+    trade_data4 = trade_data3.iloc[:, np.r_[7:83]]
+    trade_data4 = trade_data4.iloc[:, np.r_[0:76]].astype(float)
+
+    # very helpful to reshape the dataframe
+    long_trade = trade_data4.stack().to_frame()
+  
+    names = trade_data3['exporter_importer'].repeat(76)
+  
+    long_trade['exporter_to_importer'] = names.values
+    long_trade.reset_index(inplace = True)
+    long_trade.columns = ['blah', 'Year', 'ExportedValueFOB', 'Exporter_to_Importer']
+    long_trade.drop(columns = ['blah'], inplace = True)
+    long_trade['index'] = long_trade['Exporter_to_Importer'] + "_" + long_trade['Year'].astype(str)
+    long_trade.set_index("index", inplace=True)
+    
+    long_trade.to_csv("data\ExportersFOB.csv")
+
+    return long_trade
+
+# exp100 = exportsallcombinations()
+# print(exp100)
+
+################
+# Exports seperately
+################
+
+def importsallcombinations():
+    
+    trade_data1 = pd.read_csv(r"data\DOT_06-02-2024 11-13-24-61_timeSeries.csv")
+    
+    ######
+    # merge iso3
+    ######
+    iso1 = pd.read_csv(r"data\pdf_extractor\imf_iso3codes_usethese.csv")
+    trade_data2 = trade_data1.merge(iso1, left_on="Country Code", right_on="imf_code", how = "left")
+    trade_data2.rename(columns={"iso3_code": "iso3_code_exporter"}, inplace = True)
+    iso1 = pd.read_csv(r"data\pdf_extractor\imf_iso3codes_usethese.csv")
+    trade_data3 = trade_data2.merge(iso1, left_on="Counterpart Country Code", right_on="imf_code", how = "left")
+
+    trade_data3.rename(columns={"iso3_code": "iso3_code_importer"}, inplace = True)
+    trade_data3.drop(columns=['Unnamed: 0_x', 'imf_code_x','Unnamed: 0_y', 'imf_code_y'], inplace=True)
+
+    # Keep this, it helps with stacking below
+    trade_data3.fillna(0, inplace=True)
+
+    # necessary to remove 'e's from data, so already beginning to subsetting
+    trade_data3 = trade_data3[trade_data3['Attribute'] == 'Value'] 
+
+    # remove: dont want aggregates and 'lost'countries
+    aggs = [1, 80, 92, 110, 126,163, 188, 200, 205, 399, 400, 405, 459, 473, 489, 505, 598, 603, 799, 934, 965, 974,605, 884, 898, 899, 901, 903, 910, 938, 998]
+    trade_data3 = trade_data3[~trade_data3['Counterpart Country Code'].isin(aggs)]
+    aggs = [1, 80, 92, 110, 126,163, 188, 200, 205, 399, 400, 405, 459, 473, 489, 505, 598, 603, 799, 934, 965, 974,605, 884, 898, 899, 901, 903, 910, 938, 998]
+    trade_data3 = trade_data3[~trade_data3['Country Code'].isin(aggs)]
+
+    # exports
+    trade_data3 = trade_data3[trade_data3['Indicator Name'] == 'Goods, Value of Imports, Cost, Insurance, Freight (CIF), US Dollars']
+
+    # create index (THIS IS CORRECT but confusing)
+    trade_data3['importer_exporter'] = trade_data3['iso3_code_exporter'].astype(str) + "_" + trade_data3['iso3_code_importer'].astype(str)
+
+    # float needed (not sure why this happens)
+    trade_data4 = trade_data3.iloc[:, np.r_[7:83]]
+    trade_data4 = trade_data4.iloc[:, np.r_[0:76]].astype(float)
+
+    # very helpful to reshape the dataframe
+    long_trade = trade_data4.stack().to_frame()
+  
+    names = trade_data3['importer_exporter'].repeat(76)
+  
+    long_trade['importer_exporter'] = names.values
+    long_trade.reset_index(inplace = True)
+    long_trade.columns = ['blah', 'Year', 'ImporterValueCIF', 'Importer_from_Exporter']
+    
+    long_trade.drop(columns = ['blah'], inplace = True)
+    long_trade['index'] = long_trade['Importer_from_Exporter'] + "_" + long_trade['Year'].astype(str)
+    long_trade.set_index("index", inplace=True)
+    long_trade.to_csv("data\ImporterCIF.csv")
+
+    return long_trade
+
+
+def totaltrade():
+    exp100 = exportsallcombinations()
+    imp100 = importsallcombinations()
+
+    totalTradedata = pd.merge(exp100, imp100, left_index=True, right_index=True)
+    totalTradedata.rename(columns={"Year_x": "Year"}, inplace=True)
+    totalTradedata.drop(columns=['Year_y'], inplace=True)
+    
+    totalTradedata['total_trade'] = totalTradedata['ExportedValueFOB'] + totalTradedata['ImporterValueCIF']
+    totalTradedata.to_csv(r"data\totalTradedata.csv")
+totaltrade()
+
 
 ################
 # select signficant traders
 ################
 
-# dt1 = pd.read_csv("allStates_AllYears_Imports_CIF.csv")
+def significanttraders():
+    dt1 = pd.read_csv("allStates_AllYears_Imports_CIF.csv")
 
-# gettoptraders = dt1[dt1['Year'] == 2018]
-# gettoptraders = gettoptraders[['Import', 'iso_o']]
-# gettoptraders = gettoptraders.groupby(['iso_o']).sum()
-# gettoptraders.columns = ["TopImporters"]
-# gettoptraders = gettoptraders.sort_values(by = ['TopImporters'], ascending=False)[0:125]  ############# Number of countries
-# topers = gettoptraders.index.tolist()
-# dt1 = dt1[dt1['iso_o'].isin(topers)]
-# dt1 = dt1[dt1['iso_d'].isin(topers)]
+    gettoptraders = dt1[dt1['Year'] == 2018]
+    gettoptraders = gettoptraders[['Import', 'iso_o']]
+    gettoptraders = gettoptraders.groupby(['iso_o']).sum()
+    gettoptraders.columns = ["TopImporters"]
+    gettoptraders = gettoptraders.sort_values(by = ['TopImporters'], ascending=False)[0:125]  ############# Number of countries
+    topers = gettoptraders.index.tolist()
+    dt1 = dt1[dt1['iso_o'].isin(topers)]
+    dt1 = dt1[dt1['iso_d'].isin(topers)]
+
+    return dt1
 
 # #################
 # # summary
 # #################
 
-# dt1 = pd.read_csv("allStates_AllYears_Imports_CIF.csv") 
+def summarystats():
 
-# print(dt1.shape)
-# printme(dt1)
-# print(dt1['iso_o'].nunique()) #199 countries
-# print(dt1['iso_d'].nunique()) #200 countries
-# print(dt1['continent'].nunique()) # 5 continents
-# print(dt1['langoff_1'].nunique()) # 65 languages
-# print(dt1['colonizer1'].nunique()) # 15
+    dt1 = pd.read_csv("allStates_AllYears_Imports_CIF.csv") 
+
+    print(dt1.shape)
+    printme(dt1)
+    print(dt1['iso_o'].nunique()) #199 countries
+    print(dt1['iso_d'].nunique()) #200 countries
+    print(dt1['continent'].nunique()) # 5 continents
+    print(dt1['langoff_1'].nunique()) # 65 languages
+    print(dt1['colonizer1'].nunique()) # 15
 
 # ##################
 # # trade share: (exports + imports)/gdp
@@ -434,29 +576,28 @@ def figure2plot():
 
 #figure2plot()
 
-
 ################
 # new figure 3 (gdp per capita and trade share percent)
 ################
 
-# def plothist():
+def plothist():
 
-#     fig3 = pd.read_csv("figure1.csv")
-#     fig3 = fig3[fig3['Year'] == 2018]
+    fig3 = pd.read_csv("figure1.csv")
+    fig3 = fig3[fig3['Year'] == 2018]
 
-#     n_bins = 20
+    n_bins = 20
 
-#     fig, axs = plt.subplots(1, 2, sharey=False, tight_layout=True)
-#     axs[0].hist(np.log(fig3['GDP_perCapita']), bins=n_bins)
-#     axs[1].hist(np.log(fig3['Trade_share_percent']), bins=n_bins)
+    fig, axs = plt.subplots(1, 2, sharey=False, tight_layout=True)
+    axs[0].hist(np.log(fig3['GDP_perCapita']), bins=n_bins)
+    axs[1].hist(np.log(fig3['Trade_share_percent']), bins=n_bins)
 
-#     axs[0].title.set_text('GDP_perCapita 2018(logged)')
-#     axs[1].title.set_text('Trade_share_percent 2018 (logged)')
+    axs[0].title.set_text('GDP_perCapita 2018(logged)')
+    axs[1].title.set_text('Trade_share_percent 2018 (logged)')
 
 
-#     plt.show()
+    plt.show()
 
-# plothist()
+#plothist()
 
 ################
 # figures using all data
@@ -484,14 +625,14 @@ def exports_equal_imports():
 
     exp_imp.to_csv()
 
-
-# alldata = pd.read_csv("allStates_AllYears_Imports_CIF.csv")
-# # top dutch importers through time
-# statimport = alldata[alldata['Year'] == 2018]
-# statimport = statimport[statimport['iso_o'] == 'NLD']
-# statimport = statimport[['iso_d', 'Export']].groupby('iso_d').sum()
-# statimport.sort_values(['Export'], ascending=False, inplace=True)
-# print(statimport)
+def topdutchthroughtime():
+    alldata = pd.read_csv("allStates_AllYears_Imports_CIF.csv")
+    # top dutch importers through time
+    statimport = alldata[alldata['Year'] == 2018]
+    statimport = statimport[statimport['iso_o'] == 'NLD']
+    statimport = statimport[['iso_d', 'Export']].groupby('iso_d').sum()
+    statimport.sort_values(['Export'], ascending=False, inplace=True)
+    print(statimport)
 
 def dutchexports():
 
@@ -509,31 +650,127 @@ def dutchexports():
     st1 = st1[['Year', 'iso_d', 'Import']].groupby(['Year', 'iso_d']).sum()
     st1 = st1.pivot_table(index = ['iso_d'], columns = 'Year', values = 'Import')
     st1.sort_values([2023], ascending=False,inplace=True)
+    print(st1)
 
-    print(st1[0:15])
-    st1.iloc[0:15,:].T.plot()
+    _, axs = plt.subplots(1, 1, sharey=True, tight_layout=True)
+    data1 = st1.iloc[0:10,:].T
+    axs= np.log(data1).plot(linewidth=2, fontsize=8);
+    axs.title.set_text('Dutch Exports FOB (logged)');
     plt.show()
 
-dutchexports()
+# dutchexports()
 
+def getallExports():
+    alldata = pd.read_csv("allStates_AllYears_Export_FOB.csv")
 
-# def dutchimports():
-#     ############################
-#     # this is Dutch imports
-#     ############################
-#     # check: https://tradingeconomics.com/netherlands/exports-by-country
-#     # check: https://data.imf.org/regular.aspx?key=61013712
-#     st1 = alldata[['Year', 'iso_d', 'iso_o', 'Import', 'Export']]
+    ############################
+    # this is Dutch exports
+    ############################
+    # check: https://data.imf.org/regular.aspx?key=61013712
+
+    st1 = alldata[['Year', 'iso_d', 'iso_o', 'Export', 'Import']]
+    #exporting country, NLD (orginating/destination)
+
+    allstates = pd.read_csv(r"data\pdf_extractor\imf_iso3codes_usethese.csv")['iso3_code'].tolist()
+    #allstates = ['NLD', 'DEU']
+    collect1 = []
+    for i in allstates:
+        st2 = st1[st1['iso_o'] == i]
+
+        st2 = st2[['Year', 'iso_d', 'Import']].groupby(['Year', 'iso_d']).sum()
+        st2['ExportingCountry'] = i
+        collect1.append(st2)
+
+    return collect1
+
+# allexp = getallExports()
+# allexp = pd.concat(allexp)
+# allexp.to_csv("all_Exp.csv")
+
+def dutchimports():
+    ############################
+    # this is Dutch imports
+    ############################
+    # check: https://tradingeconomics.com/netherlands/exports-by-country
+    # check: https://data.imf.org/regular.aspx?key=61013712
+
+    alldata = pd.read_csv("allStates_AllYears_Imports_CIF.csv")
+
+    st1 = alldata[['Year', 'iso_d', 'iso_o', 'Import', 'Export']]
     
-#     # importing country, NLD (orginating/destination)
-#     st1 = st1[st1['iso_d'] == 'NLD']
-#     # who are the exporters to NLD
-#     st1 = st1[['Year', 'iso_o', 'Import']].groupby(['Year', 'iso_o']).sum()
-#     st1 = st1.pivot_table(index = ['iso_o'], columns = 'Year', values = 'Export')
-#     st1.sort_values([2023], ascending=False,inplace=True)
+    # importing country, NLD (orginating/destination)
+    st1 = st1[st1['iso_d'] == 'NLD']
+    # who are the exporters to NLD
+    st1 = st1[['Year', 'iso_o', 'Export']].groupby(['Year', 'iso_o']).sum()
+    st1 = st1.pivot_table(index = ['iso_o'], columns = 'Year', values = 'Export')
+    st1.sort_values([2023], ascending=False,inplace=True)
+    print(st1)
 
-#     print(st1[0:15])
-#     st1.iloc[0:15,:].T.plot()
-#     plt.show()
+    _, axs = plt.subplots(1, 1, sharey=True, tight_layout=True)
+    data1 = st1.iloc[0:10,:].T
+    axs= np.log(data1).plot(linewidth=2, fontsize=8);
+    axs.title.set_text('Dutch Imports CIF (logged)');
+    
+    plt.show();
 
-# #dutchimports()
+#dutchimports()
+
+def getallImports():
+    alldata = pd.read_csv("allStates_AllYears_Export_FOB.csv")
+
+    ############################
+    # this is Dutch exports
+    ############################
+    # check: https://data.imf.org/regular.aspx?key=61013712
+
+    st1 = alldata[['Year', 'iso_d', 'iso_o', 'Export', 'Import']]
+  
+    allstates = pd.read_csv(r"data\pdf_extractor\imf_iso3codes_usethese.csv")['iso3_code'].tolist()
+    #allstates = ['NLD']
+    collect1 = []
+    for i in allstates:
+        st2 = st1[st1['iso_d'] == i]
+        st2 = st2[['Year', 'iso_o', 'Export']].groupby(['Year', 'iso_o']).sum()
+        st2['ImportingCountry'] = i
+        collect1.append(st2)
+
+    return collect1
+
+# allimp = getallImports()
+# allimp = pd.concat(allimp)
+# allimp.to_csv("all_Imp.csv")
+
+# x = pd.read_csv("all_Imp.csv")
+# x = x[x['ImportingCountry'] == 'NLD']
+# x.to_csv("tmpx.csv")
+
+def instrument_tau():
+    
+    exports1 = pd.read_csv("allExp.csv")
+    exports1['key1'] = exports1['ExportingCountry'] + "_" + exports1['Year'].astype(str) + "_" +  exports1['iso_d']
+    exports1.drop(columns = ["Year", "iso_d", "ExportingCountry"], inplace=True)
+
+    imports1 = pd.read_csv("allImp.csv")
+    imports1['key1'] = imports1['ImportingCountry'] + "_" + imports1['Year'].astype(str) + "_" +  imports1['iso_o']
+    imports1.drop(columns = ["Year", "iso_o", "ImportingCountry"], inplace=True)
+
+    tau1 = pd.merge(exports1, imports1, left_on="key1", right_on="key1")
+
+    tau1['total_trade_new'] = tau1['Import'] + tau1['Export']
+
+    return tau1
+
+# new_tau = instrument_tau()
+
+def combine_tau(new_tau):
+
+    maindata = pd.read_csv("allStates_AllYears_Imports_CIF.csv")
+    maindata = pd.merge(maindata, new_tau, left_on="key1", right_on="key1", how="left")
+    maindata.drop(columns=['key1'], inplace=True)
+    maindata['instrument'] = (maindata['total_trade_new']/maindata['gdpgdp_nominal'])*100
+
+    maindata.to_csv("data/maindata_forRegressions.csv")
+    return maindata
+
+# maindata = combine_tau(new_tau)
+# print(maindata['instrument'])
