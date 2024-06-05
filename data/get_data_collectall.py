@@ -254,7 +254,7 @@ class Trade_Regression:
 
 def runmodel(ImpExp):
     allstates = pd.read_csv(r"data\pdf_extractor\imf_iso3codes_usethese.csv")['iso3_code'].tolist()
-    allstates = ['AFG']
+    #allstates = ['AFG']
     collect1 = []
     for i in allstates:
         print("state: ", i)
@@ -292,11 +292,13 @@ def runmodel(ImpExp):
         # Trade instrument
         #######
         # Numerator: total trade between countries per year
-        onestate1['gdpgdp_nominal'] = onestate1['cgdpe_exporter'] * onestate1['cgdpe_importer']
+        onestate1['gdpgdp_nominal_expSide'] = onestate1['cgdpe_exporter'] * onestate1['cgdpe_importer']
 
         # key
         onestate1["key1"] = onestate1['iso_o'] + "_" + onestate1['Year'].astype(str) + "_" + onestate1["iso_d"]
 
+        # another key
+        onestate1['key2'] = onestate1['iso_o'].astype(str) + "_" + onestate1['iso_d'].astype(str) + "_" + onestate1['Year'].astype(str)
 
         collect1.append(onestate1)
 
@@ -309,6 +311,19 @@ def runmodel(ImpExp):
 
 # "Export_FOB" or "Import_CIF"
 # runmodel("Import_CIF")
+
+###############
+# fix: add import countries areas
+###############
+def fix_nowaddimportcountryArea():
+    maindata = pd.read_csv(r"data/allStates_AllYears_Imports_CIF.csv")
+    geo_cepii = pd.read_csv(r"C:\Users\jpark\VSCode\gdp_trade\data\geo_cepii.csv")
+    geo_cepii = geo_cepii[['iso3', 'landlocked']]
+    geo_cepii.rename(columns = {"landlocked": "landlocked_importer"}, inplace=True)
+    newmaindata = pd.merge(maindata, geo_cepii, left_on="iso_o", right_on="iso3")
+    newmaindata.to_csv("data/allStates_AllYears_Imports_CIF.csv")
+
+fix_nowaddimportcountryArea()
 
 ################
 # Exports seperately
@@ -368,11 +383,8 @@ def exportsallcombinations():
 
     return long_trade
 
-# exp100 = exportsallcombinations()
-# print(exp100)
-
 ################
-# Exports seperately
+# Imports seperately
 ################
 
 def importsallcombinations():
@@ -429,8 +441,8 @@ def importsallcombinations():
 
     return long_trade
 
-
-def totaltrade():
+def totaltrade_gdpgdp():
+    # uses the above functions
     exp100 = exportsallcombinations()
     imp100 = importsallcombinations()
 
@@ -439,9 +451,23 @@ def totaltrade():
     totalTradedata.drop(columns=['Year_y'], inplace=True)
     
     totalTradedata['total_trade'] = totalTradedata['ExportedValueFOB'] + totalTradedata['ImporterValueCIF']
+    totalTradedata['key1'] = totalTradedata.index
     totalTradedata.to_csv(r"data\totalTradedata.csv")
-totaltrade()
 
+    gdpgdp1 = pd.read_csv(r"data\allStates_AllYears_Imports_CIF.csv")
+    gdpgdp1['key3'] = gdpgdp1['iso_o'].astype(str) + "_" + gdpgdp1['iso_d'].astype(str) + "_" + gdpgdp1['Year'].astype(str)
+    gdpgdp2 = gdpgdp1[['key3', 'gdpgdp_nominal_expSide']]
+
+    ##########
+    # merge
+    ##########
+    instrument101 = pd.merge(totalTradedata, gdpgdp2, left_on="key1", right_on="key3")
+    instrument101['instrument'] = instrument101['total_trade']/instrument101['gdpgdp_nominal_expSide']
+    instrument101.to_csv(r"data\instrument101.csv")
+
+    return instrument101
+
+# totaltrade_gdpgdp()
 
 ################
 # select signficant traders
