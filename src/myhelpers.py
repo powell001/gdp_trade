@@ -2,9 +2,6 @@ from colorama import Fore, Back, Style, init
 import matplotlib.pyplot as plt
 import pandas as pd
 
-
-init(autoreset=True)
-
 def printme(data):
     print(Fore.RED + "DataFrame type: \n", data.dtypes)
     print(Fore.RED + "DataFrame head: \n", data.head())
@@ -13,7 +10,6 @@ def printme(data):
     print(Fore.RED + "DataFrame describe: \n", data.describe())
     print(Fore.RED + "DataFrame index type: \n", data.index.dtype)
     data.info(verbose = True)
-
 
 ################
 # Helper functions for IMF trade data

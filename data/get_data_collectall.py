@@ -170,10 +170,12 @@ class Trade_Regression:
         #printme(dist1)
 
         ###### cepii has their own way of doing things
-        dist1['iso_o'].replace('ROM', 'ROU', regex=True, inplace=True)
-        dist1['iso_d'].replace('ROM', 'ROU', regex=True, inplace=True)
-        dist1['iso_o'].replace('YUG', 'MNE', regex=True, inplace=True)
-        dist1['iso_d'].replace('YUG', 'MNE', regex=True, inplace=True)
+        # dist1['iso_o'].replace('ROM', 'ROU', regex=True, inplace=True)
+        # dist1['iso_d'].replace('ROM', 'ROU', regex=True, inplace=True)
+        # dist1['iso_o'].replace('YUG', 'MNE', regex=True, inplace=True)
+        # dist1['iso_d'].replace('YUG', 'MNE', regex=True, inplace=True)
+        # dist1['iso_o'].replace('ZAR', 'COD', regex=True, inplace=True)
+        # dist1['iso_d'].replace('ZAR', 'COD', regex=True, inplace=True)
 
         ###### select the importing state 
         state1 = dist1[dist1['iso_o'] == self.state]
@@ -199,6 +201,8 @@ class Trade_Regression:
         ######## cepii has their own way of doing things
         geo_cepii['iso3'] = geo_cepii['iso3'].replace('ROM', 'ROU', regex=True);
         geo_cepii['iso3'] = geo_cepii['iso3'].replace('YUG', 'MNE', regex=True);
+        geo_cepii['iso3'] = geo_cepii['iso3'].replace('ZAR', 'COD', regex=True);
+        
 
         ######## select only needed columns
         geo_cepii = geo_cepii.loc[:, ['iso3', 'area', 'landlocked', 'continent', 'lat', 'lon', 'langoff_1', 'lang20_1', 'colonizer1']]
@@ -211,7 +215,7 @@ class Trade_Regression:
         nld_mrg2['Year'] = nld_mrg2['Year'].astype(int)
 
         ######## Add importing state area
-        area1 = geo_cepii[geo_cepii['iso3']=='NLD']['area']
+        area1 = geo_cepii[geo_cepii['iso3']==self.state]['area']
         nld_mrg2['area_importer'] = np.repeat(area1.values, nld_mrg2.shape[0])
         
         ######## indices for later merges
@@ -254,10 +258,15 @@ class Trade_Regression:
 
 def runmodel(ImpExp):
     allstates = pd.read_csv(r"data\pdf_extractor\imf_iso3codes_usethese.csv")['iso3_code'].tolist()
-    #allstates = ['AFG']
+    #allstates = ['SRB', 'NLD', 'UVK', 'DEU']  # Helpful for testing
     collect1 = []
     for i in allstates:
         print("state: ", i)
+
+        drpthese = ['UVK', 'SRB', 'SSD','TLS', 'WBG', 'CUW', 'MAF', 'ASM', 'GUM', 'VAT']
+        if i in drpthese: #Kosovo
+            continue
+
         tr1 = Trade_Regression(i, ImpExp)
         trade_data3 = tr1.maintradedata()
         trade_data4 = tr1.chooseImportCountry(trade_data3) #take in main trade data
@@ -310,7 +319,10 @@ def runmodel(ImpExp):
         out1.to_csv("data/allStates_AllYears_Export_FOB.csv")
 
 # "Export_FOB" or "Import_CIF"
+
+############################### Start main code 30 minutes ###############################
 # runmodel("Import_CIF")
+############################### Start main code ###############################
 
 ###############
 # fix: add import countries areas
@@ -323,7 +335,7 @@ def fix_nowaddimportcountryArea():
     newmaindata = pd.merge(maindata, geo_cepii, left_on="iso_o", right_on="iso3")
     newmaindata.to_csv("data/allStates_AllYears_Imports_CIF.csv")
 
-fix_nowaddimportcountryArea()
+# fix_nowaddimportcountryArea()
 
 ################
 # Exports seperately
@@ -466,8 +478,7 @@ def totaltrade_gdpgdp():
     instrument101.to_csv(r"data\instrument101.csv")
 
     return instrument101
-
-# totaltrade_gdpgdp()
+#totaltrade_gdpgdp()
 
 ################
 # select signficant traders
@@ -682,9 +693,8 @@ def dutchexports():
     data1 = st1.iloc[0:10,:].T
     axs= np.log(data1).plot(linewidth=2, fontsize=8);
     axs.title.set_text('Dutch Exports FOB (logged)');
-    plt.show()
-
-# dutchexports()
+    plt.savefig("DutchExportFOB(logged)")
+#dutchexports()
 
 def getallExports():
     alldata = pd.read_csv("allStates_AllYears_Export_FOB.csv")
@@ -737,9 +747,9 @@ def dutchimports():
     axs= np.log(data1).plot(linewidth=2, fontsize=8);
     axs.title.set_text('Dutch Imports CIF (logged)');
     
-    plt.show();
+    plt.savefig("DutchImportCIF(logged)")
 
-#dutchimports()
+dutchimports()
 
 def getallImports():
     alldata = pd.read_csv("allStates_AllYears_Export_FOB.csv")

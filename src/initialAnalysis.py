@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from myhelpers import printme, totalexportsperyear, totalimportsperyear
+from linearmodels import PanelOLS
 
 ################
 # Data for regressions
@@ -21,7 +22,7 @@ def selectdataRegression():
     taudata1 = taudata1[['key3', 'instrument']]
 
     regressiondata = pd.merge(data1, taudata1, left_on="key2", right_on="key3")
-    regressiondata.to_csv("regressiondata.csv")
+    regressiondata.to_csv("data/regressiondata.csv")
 
 #selectdataRegression()
 
@@ -199,23 +200,259 @@ def loop_adf_gdppop():
     print("Reject Unit Root: ", count_rejections)
     print("Fail to reject Unit Root: ", count_fail_rejections)
 
-loop_adf_gdppop()
+#loop_adf_gdppop()
 
 ###########################
 # Estimated trade share
 ###########################
 
+######################################################
+# Panel Data
+######################################################
+
+# analysis run using MATLAB
+# set up data for MATLAB
+# https://bashtage.github.io/linearmodels/panel/examples/examples.html
+
+
+#######
+# Regression data
+#######
+
+data1 = pd.read_csv("data/regressiondata.csv")
+data1['ImportingCountry'] = data1['key2'].astype(str).str[0:3]
+data1['Year'] = data1['key2'].astype(str).str[-4:].astype(int)
+
+###################################################################
+# year data
+data1 = data1[(data1['Year'] >= 1948) & (data1['Year'] <= 2019)]
+###################################################################
+
+data1.drop(columns=["Unnamed: 0", "key2", "key3"],inplace=True)
+print(data1)
+data1['area_importer'] = data1['area_importer'].astype(float)
+printme(data1)
+
+### select 10 countries
+#countries = ["NLD","DEU","USA","KOR","JPN","CHN","CAN","FRA","ESP","GBR","ITA","POL","SWE","NOR","COL"]
+countries = data1['ImportingCountry'].unique()
+data1 = data1[data1['ImportingCountry'].isin(countries)]
+
+#################
+#data1['constant'] = 1
+#################
+data1[data1['instrument']==0] = np.nan
+data1['instrument_log'] = np.where(~data1['instrument'].isnull(), np.log(data1['instrument']), data1['instrument'])
+##################
+data1['dist_log'] = np.log(data1['dist'])
+##################
+data1['pop_importer_log'] = np.log(data1['pop_importer'])
+##################
+data1['pop_exporter_log'] = np.log(data1['pop_exporter'])
+##################
+data1['area_importer_log'] = np.log(data1['area_importer'])
+##################
+data1['area_exporter_log'] = np.log(data1['area_exporter'])
+##################
+data1['landlocked'] = data1['landlocked_importer'] + data1['landlocked_exporter']
+
+data1['dist_border_log'] = data1['dist_log'] * data1['border']
+data1['pop_importer_border_log'] = data1['pop_importer_log'] * data1['border']
+data1['pop_exporter_border_log'] = data1['pop_exporter_log'] * data1['border']
+data1['area_importer_border_log'] = data1['area_importer_log'] * data1['border']
+data1['area_exporter_border_log'] = data1['area_exporter_log'] * data1['border']
+
+mi_data = data1.set_index(['ImportingCountry', 'Year'], drop = True)
+#mi_data['Year'] = pd.Categorical(mi_data['Year'])
+
+
+mi_data.corr().to_csv("corr.csv")
+
+model_1948_2019 = PanelOLS(mi_data.instrument_log, mi_data[['dist_log','pop_importer_log','pop_exporter_log','area_importer_log','area_exporter_log',
+                                                'landlocked','border', 'dist_border_log', 'pop_importer_border_log',
+                                                'pop_exporter_border_log']], entity_effects=False, time_effects=True, drop_absorbed=True)
+print(model_1948_2019.fit().summary)
+
+plt.rc("figure", figsize=(12, 7))
+plt.text(0.01, 0.05, model_1948_2019.fit(), {"fontsize": 10}, fontproperties="monospace")
+plt.axis("off")
+plt.tight_layout()
+plt.gcf().tight_layout(pad=1.0)
+plt.savefig("alldata_model.png", transparent=False)
 
 
 
+######
+# Estimated Effects
+######
+def estimatedEntityEffects():
+    estEffect = model_1948_2019.fit().estimated_effects
+    estEffect.to_csv("data\estEffect.csv")
 
-# trade share
-# def adf_tradeShare():
-#     pass
+    estEffect = pd.read_csv("data\estEffect.csv", index_col=[0])
+    estEffect['ISO3'] = estEffect.index
+    estEffect.drop_duplicates(keep='first', inplace=True)
+    state1 = estEffect[estEffect['Year'] == 2019]
+    state1.drop_duplicates(subset=['ISO3'] , keep='first', inplace=True, ignore_index=True)
+    state1.drop(columns=['Year'], inplace=True)
+    state1.sort_values('estimated_effects', ascending=False, inplace=True)
+    print(state1)
 
-# adf_tradeShare()
+    top25 = state1.iloc[0:24,:]
+    bottom25 = state1.iloc[-24:,:]
 
-# trade share instrument
+    fig, (ax1, ax2) = plt.subplots(nrows=2,ncols=1, sharex=False, squeeze=True,  layout='constrained')
+    top25.plot.bar(x="ISO3", y="estimated_effects", grid=True, ax=ax1)
+    ax1.set_title("Top 25")
+    bottom25.plot.bar(x="ISO3", y="estimated_effects", grid=True, ax=ax2)
+    ax2.set_title("Bottom 25")
+
+    plt.savefig("EntityEffects.png")
+#estimatedEntityEffects()
+
+def estimatedTimeEffects():
+
+    estEffect = model_1948_2019.fit().estimated_effects
+    print(estEffect)
+    estEffect.to_csv("data\estEffect.csv")
+    estEffect = pd.read_csv("data\estEffect.csv", index_col=[0])
+    timeEffect = estEffect[['Year', 'estimated_effects']]
+    timeEffect.drop_duplicates(subset=['Year'], inplace=True)
+    timeEffect.sort_values(["Year"], ascending=True, inplace=True)
+    timeEffect.set_index("Year", inplace=True)
+    timeEffect.plot(title="Time Effects")
+    plt.savefig("TimeEffects.png")
+estimatedTimeEffects()
+
+def modelsforComparison():
+
+    #######
+    # Regression data
+    #######
+
+    data1 = pd.read_csv("data/regressiondata.csv")
+    data1['ImportingCountry'] = data1['key2'].astype(str).str[0:3]
+    data1['Year'] = data1['key2'].astype(str).str[-4:].astype(int)
+
+    ###################################################################
+    # year data
+    data1 = data1[(data1['Year'] >= 1960) & (data1['Year'] <= 1992)]
+    ###################################################################
+
+    data1.drop(columns=["Unnamed: 0", "key2", "key3"],inplace=True)
+    print(data1)
+    data1['area_importer'] = data1['area_importer'].astype(float)
+    printme(data1)
+
+    ### select 10 countries
+    #countries = ["NLD","DEU","USA","KOR","JPN","CHN","CAN","FRA","ESP","GBR","ITA","POL","SWE","NOR","COL"]
+    countries = data1['ImportingCountry'].unique()
+    data1 = data1[data1['ImportingCountry'].isin(countries)]
+
+    #################
+    #data1['constant'] = 1
+    #################
+    data1[data1['instrument']==0] = np.nan
+    data1['instrument_log'] = np.where(~data1['instrument'].isnull(), np.log(data1['instrument']), data1['instrument'])
+    ##################
+    data1['dist_log'] = np.log(data1['dist'])
+    ##################
+    data1['pop_importer_log'] = np.log(data1['pop_importer'])
+    ##################
+    data1['pop_exporter_log'] = np.log(data1['pop_exporter'])
+    ##################
+    data1['area_importer_log'] = np.log(data1['area_importer'])
+    ##################
+    data1['area_exporter_log'] = np.log(data1['area_exporter'])
+    ##################
+    data1['landlocked'] = data1['landlocked_importer'] + data1['landlocked_exporter']
+
+    data1['dist_border_log'] = data1['dist_log'] * data1['border']
+    data1['pop_importer_border_log'] = data1['pop_importer_log'] * data1['border']
+    data1['pop_exporter_border_log'] = data1['pop_exporter_log'] * data1['border']
+    data1['area_importer_border_log'] = data1['area_importer_log'] * data1['border']
+    data1['area_exporter_border_log'] = data1['area_exporter_log'] * data1['border']
+
+    mi_data = data1.set_index(['ImportingCountry', 'Year'], drop = True)
+    #mi_data['Year'] = pd.Categorical(mi_data['Year'])
+
+
+    mi_data.corr().to_csv("corr.csv")
+
+    model_1960_1992 = PanelOLS(mi_data.instrument_log, mi_data[['dist_log','pop_importer_log','pop_exporter_log','area_importer_log','area_exporter_log',
+                                                    'landlocked','border', 'dist_border_log', 'pop_importer_border_log',
+                                                    'pop_exporter_border_log']], entity_effects=True, drop_absorbed=True)
+    print(model_1960_1992.fit().summary)
 
 
 
+    #######
+    # Regression data
+    #######
+
+    data1 = pd.read_csv("data/regressiondata.csv")
+    data1['ImportingCountry'] = data1['key2'].astype(str).str[0:3]
+    data1['Year'] = data1['key2'].astype(str).str[-4:].astype(int)
+
+    ###################################################################
+    # year data
+    data1 = data1[(data1['Year'] >= 1948) & (data1['Year'] <= 2019)]
+    ###################################################################
+
+    data1.drop(columns=["Unnamed: 0", "key2", "key3"],inplace=True)
+    print(data1)
+    data1['area_importer'] = data1['area_importer'].astype(float)
+    printme(data1)
+
+    ### select 10 countries
+    countries = ["NLD","DEU","USA","KOR","JPN","CHN","CAN","FRA","ESP","GBR","ITA","POL","SWE","NOR","COL","IND","ARG","ZAF","IRL", "PAK"]
+    #countries = data1['ImportingCountry'].unique()
+    data1 = data1[data1['ImportingCountry'].isin(countries)]
+
+    #################
+    #data1['constant'] = 1
+    #################
+    data1[data1['instrument']==0] = np.nan
+    data1['instrument_log'] = np.where(~data1['instrument'].isnull(), np.log(data1['instrument']), data1['instrument'])
+    ##################
+    data1['dist_log'] = np.log(data1['dist'])
+    ##################
+    data1['pop_importer_log'] = np.log(data1['pop_importer'])
+    ##################
+    data1['pop_exporter_log'] = np.log(data1['pop_exporter'])
+    ##################
+    data1['area_importer_log'] = np.log(data1['area_importer'])
+    ##################
+    data1['area_exporter_log'] = np.log(data1['area_exporter'])
+    ##################
+    data1['landlocked'] = data1['landlocked_importer'] + data1['landlocked_exporter']
+
+    data1['dist_border_log'] = data1['dist_log'] * data1['border']
+    data1['pop_importer_border_log'] = data1['pop_importer_log'] * data1['border']
+    data1['pop_exporter_border_log'] = data1['pop_exporter_log'] * data1['border']
+    data1['area_importer_border_log'] = data1['area_importer_log'] * data1['border']
+    data1['area_exporter_border_log'] = data1['area_exporter_log'] * data1['border']
+
+    mi_data = data1.set_index(['ImportingCountry', 'Year'], drop = True)
+    #mi_data['Year'] = pd.Categorical(mi_data['Year'])
+
+    mi_data['constant'] = 1
+
+    mi_data.corr().to_csv("corr.csv")
+
+    model_largeStates = PanelOLS(mi_data.instrument_log, mi_data[['constant',  'dist_log','pop_importer_log','pop_exporter_log','area_importer_log','area_exporter_log',
+                                                    'landlocked','border', 'dist_border_log', 'pop_importer_border_log',
+                                                    'pop_exporter_border_log']], entity_effects=True, drop_absorbed=True)
+    print(model_largeStates.fit().summary)
+
+
+    from linearmodels.panel import compare
+    xx = compare({"OriginalFE": model_1960_1992.fit(), "AllData": model_1948_2019.fit(), "LargeStates": model_largeStates.fit()}).summary.as_csv
+
+
+    plt.rc("figure", figsize=(12, 7))
+    plt.text(0.01, 0.05, xx, {"fontsize": 10}, fontproperties="monospace")
+    plt.axis("off")
+    plt.tight_layout()
+    plt.gcf().tight_layout(pad=1.0)
+    plt.savefig("iv_model.png", transparent=False)
