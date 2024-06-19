@@ -341,7 +341,7 @@ def runmodel(ImpExp):
 # "Export_FOB" or "Import_CIF"
 
 ############################### Start main code 30 minutes ###############################
-runmodel("Export_FOB")
+# runmodel("Export_FOB")
 ############################### Start main code ###############################
 
 ###############
