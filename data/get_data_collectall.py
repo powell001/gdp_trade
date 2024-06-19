@@ -7,6 +7,9 @@ import colorama
 from myhelpers import printme
 from functools import reduce
 import seaborn as sns
+import warnings
+warnings.filterwarnings("ignore")
+
 plt.rcParams['figure.figsize'] = (10, 5)
 plt.style.use('bmh')
 
@@ -34,14 +37,17 @@ class Trade_Regression:
 
     def maintradedata(self):
         trade_data1 = pd.read_csv(r"data\DOT_06-02-2024 11-13-24-61_timeSeries.csv")
-        #printme(trade_data1)
+        # Belgium-Luxembourg is in the above database 126, both as importer and exporter
 
         ######
-        # merge iso3
+        # merge iso3 (BEX added for Belgium-Luxembroug)
         ######
         iso1 = pd.read_csv(r"data\pdf_extractor\imf_iso3codes_usethese.csv")
+        assert iso1['iso3_code'].str.contains('BEX').any()
+
         trade_data2 = trade_data1.merge(iso1, left_on="Country Code", right_on="imf_code", how = "left")
         trade_data2.rename(columns={"iso3_code": "iso3_code_importer"}, inplace = True)
+
         iso1 = pd.read_csv(r"data\pdf_extractor\imf_iso3codes_usethese.csv")
         trade_data3 = trade_data2.merge(iso1, left_on="Counterpart Country Code", right_on="imf_code", how = "left")
         trade_data3.rename(columns={"iso3_code": "iso3_code_exporter"}, inplace = True)
@@ -54,9 +60,9 @@ class Trade_Regression:
         trade_data3 = trade_data3[trade_data3['Attribute'] == 'Value'] 
 
         # remove: dont want aggregates and 'lost'countries
-        aggs = [1, 80, 92, 110, 126,163, 188, 200, 205, 399, 400, 405, 459, 473, 489, 505, 598, 603, 799, 934, 965, 974,605, 884, 898, 899, 901, 903, 910, 938, 998]
+        aggs = [1, 80, 92, 110, 163, 188, 200, 205, 399, 400, 405, 459, 473, 489, 505, 598, 603, 799, 934, 965, 974,605, 884, 898, 899, 901, 903, 910, 938, 998]
         trade_data3 = trade_data3[~trade_data3['Counterpart Country Code'].isin(aggs)]
-        aggs = [1, 80, 92, 110, 126,163, 188, 200, 205, 399, 400, 405, 459, 473, 489, 505, 598, 603, 799, 934, 965, 974,605, 884, 898, 899, 901, 903, 910, 938, 998]
+        aggs = [1, 80, 92, 110, 163, 188, 200, 205, 399, 400, 405, 459, 473, 489, 505, 598, 603, 799, 934, 965, 974,605, 884, 898, 899, 901, 903, 910, 938, 998]
         trade_data3 = trade_data3[~trade_data3['Country Code'].isin(aggs)]
 
         return trade_data3
@@ -78,7 +84,6 @@ class Trade_Regression:
             state1 = state1[state1['Indicator Name']=='Goods, Value of Exports, Free on board (FOB), US Dollars']
         else: 
              print("You must choose Import_CIF or Export_FOB")
-
 
         ### choose index
         state1['Relationship_1'] = state1['Country Code'].astype(str) + "-" + state1['Counterpart Country Code'].astype(str)
@@ -137,7 +142,8 @@ class Trade_Regression:
 
         state_stacked.index = state_stacked.index.get_level_values(0)
         state_stacked.columns = ['Export', 'Year']
-        print(state_stacked)
+       
+        
 
         ######
         # duplicates
@@ -166,8 +172,16 @@ class Trade_Regression:
         ######
         # distance and other measures of similarity
         ######
+        ########################
+        # BEX added to dist_cepii.csv, copy BEL replace with BEX
+        ########################
+
         dist1 = pd.read_csv(r"C:\Users\jpark\VSCode\gdp_trade\data\dist_cepii.csv")
-        #printme(dist1)
+        assert dist1['iso_o'].str.contains("BEX").any()
+
+        ######################
+        # above file needs to be changed by hand, both import and export columns, add BEX to end
+        ######################
 
         ###### cepii has their own way of doing things
         # dist1['iso_o'].replace('ROM', 'ROU', regex=True, inplace=True)
@@ -198,11 +212,15 @@ class Trade_Regression:
         ######################### 
         geo_cepii = pd.read_csv(r"C:\Users\jpark\VSCode\gdp_trade\data\geo_cepii.csv")
 
+        #############
+        # BEX should be included and is exactly as BEL
+        #############
+        assert geo_cepii['iso3'].str.contains("BEX").any()
+
         ######## cepii has their own way of doing things
         geo_cepii['iso3'] = geo_cepii['iso3'].replace('ROM', 'ROU', regex=True);
         geo_cepii['iso3'] = geo_cepii['iso3'].replace('YUG', 'MNE', regex=True);
         geo_cepii['iso3'] = geo_cepii['iso3'].replace('ZAR', 'COD', regex=True);
-        
 
         ######## select only needed columns
         geo_cepii = geo_cepii.loc[:, ['iso3', 'area', 'landlocked', 'continent', 'lat', 'lon', 'langoff_1', 'lang20_1', 'colonizer1']]
@@ -210,7 +228,6 @@ class Trade_Regression:
         ######## in some cases there are two rows for same country
         geo_cepii.drop_duplicates(subset=['iso3'], keep='last', inplace=True)
 
-        ######## MERGE ########
         nld_mrg2 = pd.merge(nld_mrd1, geo_cepii, left_on="iso_d", right_on="iso3", how="left")
         nld_mrg2['Year'] = nld_mrg2['Year'].astype(int)
 
@@ -223,7 +240,6 @@ class Trade_Regression:
         nld_mrg2['tmp_key_2'] = nld_mrg2['iso_d'] + "_" + nld_mrg2['Year'].astype(str)
        
         return nld_mrg2
-
 
     def pwtdata(self, nld_mrg2):
 
@@ -258,7 +274,7 @@ class Trade_Regression:
 
 def runmodel(ImpExp):
     allstates = pd.read_csv(r"data\pdf_extractor\imf_iso3codes_usethese.csv")['iso3_code'].tolist()
-    #allstates = ['SRB', 'NLD', 'UVK', 'DEU']  # Helpful for testing
+    #allstates = ['NLD', 'DEU', 'BEX', 'BEL']  # Helpful for testing
     collect1 = []
     for i in allstates:
         print("state: ", i)
@@ -313,15 +329,19 @@ def runmodel(ImpExp):
 
     out1 = pd.concat(collect1)
 
+    # check for BEX
+    assert out1['iso_o'].str.contains('BEX').any()
+    assert out1['iso_d'].str.contains('BEX').any()
+
     if ImpExp == "Import_CIF":
-        out1.to_csv("data/allStates_AllYears_Imports_CIF.csv")
+        out1.to_csv(r"data/allStates_AllYears_Imports_CIF.csv")
     else:
-        out1.to_csv("data/allStates_AllYears_Export_FOB.csv")
+        out1.to_csv(r"data/allStates_AllYears_Export_FOB.csv")
 
 # "Export_FOB" or "Import_CIF"
 
 ############################### Start main code 30 minutes ###############################
-# runmodel("Import_CIF")
+runmodel("Export_FOB")
 ############################### Start main code ###############################
 
 ###############
@@ -333,17 +353,24 @@ def fix_nowaddimportcountryArea():
     geo_cepii = geo_cepii[['iso3', 'landlocked']]
     geo_cepii.rename(columns = {"landlocked": "landlocked_importer"}, inplace=True)
     newmaindata = pd.merge(maindata, geo_cepii, left_on="iso_o", right_on="iso3")
-    newmaindata.to_csv("data/allStates_AllYears_Imports_CIF.csv")
 
+    # check for BEX
+    assert newmaindata['iso_o'].str.contains('BEX').any()
+    assert newmaindata['iso_d'].str.contains('BEX').any()
+
+    newmaindata.to_csv(r"data/allStates_AllYears_Imports_CIF.csv")
 # fix_nowaddimportcountryArea()
 
 ################
 # Exports seperately
 ################
-
 def exportsallcombinations():
     
     trade_data1 = pd.read_csv(r"data\DOT_06-02-2024 11-13-24-61_timeSeries.csv")
+
+    # check for BEX
+    assert trade_data1['Country Name'].str.contains('Belgium-Luxembourg').any()
+    assert trade_data1['Counterpart Country Name'].str.contains('Belgium-Luxembourg').any()
     
     ######
     # merge iso3
@@ -364,9 +391,9 @@ def exportsallcombinations():
     trade_data3 = trade_data3[trade_data3['Attribute'] == 'Value'] 
 
     # remove: dont want aggregates and 'lost'countries
-    aggs = [1, 80, 92, 110, 126,163, 188, 200, 205, 399, 400, 405, 459, 473, 489, 505, 598, 603, 799, 934, 965, 974,605, 884, 898, 899, 901, 903, 910, 938, 998]
+    aggs = [1, 80, 92, 110,163, 188, 200, 205, 399, 400, 405, 459, 473, 489, 505, 598, 603, 799, 934, 965, 974,605, 884, 898, 899, 901, 903, 910, 938, 998]
     trade_data3 = trade_data3[~trade_data3['Counterpart Country Code'].isin(aggs)]
-    aggs = [1, 80, 92, 110, 126,163, 188, 200, 205, 399, 400, 405, 459, 473, 489, 505, 598, 603, 799, 934, 965, 974,605, 884, 898, 899, 901, 903, 910, 938, 998]
+    aggs = [1, 80, 92, 110,163, 188, 200, 205, 399, 400, 405, 459, 473, 489, 505, 598, 603, 799, 934, 965, 974,605, 884, 898, 899, 901, 903, 910, 938, 998]
     trade_data3 = trade_data3[~trade_data3['Country Code'].isin(aggs)]
 
     # exports
@@ -398,7 +425,6 @@ def exportsallcombinations():
 ################
 # Imports seperately
 ################
-
 def importsallcombinations():
     
     trade_data1 = pd.read_csv(r"data\DOT_06-02-2024 11-13-24-61_timeSeries.csv")
@@ -422,9 +448,9 @@ def importsallcombinations():
     trade_data3 = trade_data3[trade_data3['Attribute'] == 'Value'] 
 
     # remove: dont want aggregates and 'lost'countries
-    aggs = [1, 80, 92, 110, 126,163, 188, 200, 205, 399, 400, 405, 459, 473, 489, 505, 598, 603, 799, 934, 965, 974,605, 884, 898, 899, 901, 903, 910, 938, 998]
+    aggs = [1, 80, 92, 110,163, 188, 200, 205, 399, 400, 405, 459, 473, 489, 505, 598, 603, 799, 934, 965, 974,605, 884, 898, 899, 901, 903, 910, 938, 998]
     trade_data3 = trade_data3[~trade_data3['Counterpart Country Code'].isin(aggs)]
-    aggs = [1, 80, 92, 110, 126,163, 188, 200, 205, 399, 400, 405, 459, 473, 489, 505, 598, 603, 799, 934, 965, 974,605, 884, 898, 899, 901, 903, 910, 938, 998]
+    aggs = [1, 80, 92, 110,163, 188, 200, 205, 399, 400, 405, 459, 473, 489, 505, 598, 603, 799, 934, 965, 974,605, 884, 898, 899, 901, 903, 910, 938, 998]
     trade_data3 = trade_data3[~trade_data3['Country Code'].isin(aggs)]
 
     # exports
@@ -466,7 +492,7 @@ def totaltrade_gdpgdp():
     totalTradedata['key1'] = totalTradedata.index
     totalTradedata.to_csv(r"data\totalTradedata.csv")
 
-    gdpgdp1 = pd.read_csv(r"data\allStates_AllYears_Imports_CIF.csv")
+    gdpgdp1 = pd.read_csv(r"data/allStates_AllYears_Imports_CIF.csv")
     gdpgdp1['key3'] = gdpgdp1['iso_o'].astype(str) + "_" + gdpgdp1['iso_d'].astype(str) + "_" + gdpgdp1['Year'].astype(str)
     gdpgdp2 = gdpgdp1[['key3', 'gdpgdp_nominal_expSide']]
 
@@ -485,7 +511,7 @@ def totaltrade_gdpgdp():
 ################
 
 def significanttraders():
-    dt1 = pd.read_csv("allStates_AllYears_Imports_CIF.csv")
+    dt1 = pd.read_csv(r"data/allStates_AllYears_Imports_CIF.csv")
 
     gettoptraders = dt1[dt1['Year'] == 2018]
     gettoptraders = gettoptraders[['Import', 'iso_o']]
@@ -504,7 +530,7 @@ def significanttraders():
 
 def summarystats():
 
-    dt1 = pd.read_csv("allStates_AllYears_Imports_CIF.csv") 
+    dt1 = pd.read_csv(r"data/allStates_AllYears_Imports_CIF.csv") 
 
     print(dt1.shape)
     printme(dt1)
@@ -519,7 +545,7 @@ def summarystats():
 # # https://ourworldindata.org/grapher/trade-as-share-of-gdp#:~:text=Sum%20of%20exports%20and%20imports,product%2C%20expressed%20as%20apercentage.
 # ##################
 
-# dt1 = pd.read_csv("allStates_AllYears_Imports_CIF.csv") 
+# dt1 = pd.read_csv(r"data/allStates_AllYears_Imports_CIF.csv") 
 # # dt1['trade_share'] = (dt1['Import'] + dt1['Export'])/dt1['rgdpe_importer'])
 
 def fig1(dt1):
@@ -530,7 +556,6 @@ def fig1(dt1):
         print(i)
         # select country
         t1 = dt1[dt1['iso_o'] == i]
-        t1.to_csv("tmp3.csv")
 
         # sum imports
         impts = dt1[dt1['iso_o'] == i][['Year', 'Import']]
@@ -562,7 +587,6 @@ def fig1(dt1):
     out1 = pd.concat(collect1)    
     
     return out1
-
 # figure1 = fig1(dt1)
 # figure1.to_csv("figure1_imports.csv")
 
@@ -584,7 +608,6 @@ def figure1plot():
 
     #ax.set_yscale('log')
     plt.show()
-
 #figure1plot()
 
 #################
@@ -599,7 +622,6 @@ def figure2plot():
     fig2 = fig2[~fig2['importer_iso'].isin(['ARE', 'BRN', 'QAT', 'MAC', 'SAU', 'VNM', 'LBR'])]
     fig2 = fig2[fig2['Trade_share_percent'] >= 0]
     #fig2 = fig2[(fig2['Year'] >= 1960) & (fig2['Year'] <= 1992)]
-    fig2.to_csv("tmp_fig2.csv")
 
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1)
@@ -610,7 +632,6 @@ def figure2plot():
     plt.title("Figure 2 from paper, outliers dropped")
 
     plt.show()
-
 #figure2plot()
 
 ################
@@ -633,25 +654,29 @@ def plothist():
 
 
     plt.show()
-
 #plothist()
 
 ################
 # figures using all data
 ################
 
-def exports_equal_imports():
+def exports_equal_imports(year):
     # So, do reported exports = reported imports?
     
-    alldata = pd.read_csv("allStates_AllYears_Imports_CIF.csv")
+    alldata = pd.read_csv(r"data/allStates_AllYears_Imports_CIF.csv")
 
-    exports_perCountry = alldata[alldata['Year'] == 2018]
+    # check for BEX
+    assert alldata['iso_o'].str.contains('BEX').any()
+    assert alldata['iso_d'].str.contains('BEX').any()
+    
+
+    exports_perCountry = alldata[alldata['Year'] == year]
     exp1 = exports_perCountry[['Export', 'iso_d']]
     exp1 = exp1.groupby(['iso_d']).sum()
     exp1.sort_values(['Export'], ascending=False, inplace=True)
     print(exp1)
 
-    imports_perCountry = alldata[alldata['Year'] == 2018]
+    imports_perCountry = alldata[alldata['Year'] == year]
     imp1 = exports_perCountry[['Import', 'iso_o']]
     imp1 = imp1.groupby(['iso_o']).sum()
     imp1.sort_values(['Import'], ascending=False, inplace=True)
@@ -663,7 +688,7 @@ def exports_equal_imports():
     exp_imp.to_csv()
 
 def topdutchthroughtime():
-    alldata = pd.read_csv("allStates_AllYears_Imports_CIF.csv")
+    alldata = pd.read_csv(r"data/allStates_AllYears_Imports_CIF.csv")
     # top dutch importers through time
     statimport = alldata[alldata['Year'] == 2018]
     statimport = statimport[statimport['iso_o'] == 'NLD']
@@ -673,7 +698,12 @@ def topdutchthroughtime():
 
 def dutchexports():
 
-    alldata = pd.read_csv("allStates_AllYears_Export_FOB.csv")
+    alldata = pd.read_csv(r"data/allStates_AllYears_Export_FOB.csv")
+    
+    # check for BEX
+    assert alldata['iso_o'].str.contains('BEX').any()
+    assert alldata['iso_d'].str.contains('BEX').any()
+    
 
     ############################
     # this is Dutch exports
@@ -697,7 +727,12 @@ def dutchexports():
 #dutchexports()
 
 def getallExports():
-    alldata = pd.read_csv("allStates_AllYears_Export_FOB.csv")
+    alldata = pd.read_csv(r"data/allStates_AllYears_Export_FOB.csv")
+
+    # check for BEX
+    assert alldata['iso_o'].str.contains('BEX').any()
+    assert alldata['iso_d'].str.contains('BEX').any()
+    
 
     ############################
     # this is Dutch exports
@@ -705,11 +740,12 @@ def getallExports():
     # check: https://data.imf.org/regular.aspx?key=61013712
 
     st1 = alldata[['Year', 'iso_d', 'iso_o', 'Export', 'Import']]
+    
     #exporting country, NLD (orginating/destination)
 
     allstates = pd.read_csv(r"data\pdf_extractor\imf_iso3codes_usethese.csv")['iso3_code'].tolist()
-    #allstates = ['NLD', 'DEU']
     collect1 = []
+    
     for i in allstates:
         st2 = st1[st1['iso_o'] == i]
 
@@ -719,9 +755,9 @@ def getallExports():
 
     return collect1
 
-# allexp = getallExports()
-# allexp = pd.concat(allexp)
-# allexp.to_csv("all_Exp.csv")
+allexp = getallExports()
+allexp = pd.concat(allexp)
+allexp.to_csv("all_Exp.csv")
 
 def dutchimports():
     ############################
@@ -730,7 +766,7 @@ def dutchimports():
     # check: https://tradingeconomics.com/netherlands/exports-by-country
     # check: https://data.imf.org/regular.aspx?key=61013712
 
-    alldata = pd.read_csv("allStates_AllYears_Imports_CIF.csv")
+    alldata = pd.read_csv(r"data/allStates_AllYears_Imports_CIF.csv")
 
     st1 = alldata[['Year', 'iso_d', 'iso_o', 'Import', 'Export']]
     
@@ -748,11 +784,14 @@ def dutchimports():
     axs.title.set_text('Dutch Imports CIF (logged)');
     
     plt.savefig("DutchImportCIF(logged)")
-
-dutchimports()
+# dutchimports()
 
 def getallImports():
-    alldata = pd.read_csv("allStates_AllYears_Export_FOB.csv")
+    alldata = pd.read_csv(r"data/allStates_AllYears_Export_FOB.csv")
+    
+    # check for BEX
+    assert alldata['iso_o'].str.contains('BEX').any()
+    assert alldata['iso_d'].str.contains('BEX').any()
 
     ############################
     # this is Dutch exports
@@ -772,9 +811,9 @@ def getallImports():
 
     return collect1
 
-# allimp = getallImports()
-# allimp = pd.concat(allimp)
-# allimp.to_csv("all_Imp.csv")
+allimp = getallImports()
+allimp = pd.concat(allimp)
+allimp.to_csv("all_Imp.csv")
 
 # x = pd.read_csv("all_Imp.csv")
 # x = x[x['ImportingCountry'] == 'NLD']
@@ -782,11 +821,11 @@ def getallImports():
 
 def instrument_tau():
     
-    exports1 = pd.read_csv("allExp.csv")
+    exports1 = pd.read_csv("all_Exp.csv")
     exports1['key1'] = exports1['ExportingCountry'] + "_" + exports1['Year'].astype(str) + "_" +  exports1['iso_d']
     exports1.drop(columns = ["Year", "iso_d", "ExportingCountry"], inplace=True)
 
-    imports1 = pd.read_csv("allImp.csv")
+    imports1 = pd.read_csv("all_Imp.csv")
     imports1['key1'] = imports1['ImportingCountry'] + "_" + imports1['Year'].astype(str) + "_" +  imports1['iso_o']
     imports1.drop(columns = ["Year", "iso_o", "ImportingCountry"], inplace=True)
 
@@ -795,18 +834,27 @@ def instrument_tau():
     tau1['total_trade_new'] = tau1['Import'] + tau1['Export']
 
     return tau1
-
-# new_tau = instrument_tau()
+new_tau = instrument_tau()
 
 def combine_tau(new_tau):
 
-    maindata = pd.read_csv("allStates_AllYears_Imports_CIF.csv")
+    maindata = pd.read_csv(r"data/allStates_AllYears_Imports_CIF.csv")
+
+    # check for BEX
+    assert maindata['iso_o'].str.contains('BEX').any()
+    assert maindata['iso_d'].str.contains('BEX').any()
+
+
     maindata = pd.merge(maindata, new_tau, left_on="key1", right_on="key1", how="left")
     maindata.drop(columns=['key1'], inplace=True)
-    maindata['instrument'] = (maindata['total_trade_new']/maindata['gdpgdp_nominal'])*100
+
+    # check for BEX
+    assert maindata['iso_o'].str.contains('BEX').any()
+    assert maindata['iso_d'].str.contains('BEX').any()
+
+    maindata['instrument'] = (maindata['total_trade_new']/maindata['gdpgdp_nominal_expSide'])*100
 
     maindata.to_csv("data/maindata_forRegressions.csv")
     return maindata
-
-# maindata = combine_tau(new_tau)
+maindata = combine_tau(new_tau)
 # print(maindata['instrument'])

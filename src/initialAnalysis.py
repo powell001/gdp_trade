@@ -214,73 +214,71 @@ def loop_adf_gdppop():
 # set up data for MATLAB
 # https://bashtage.github.io/linearmodels/panel/examples/examples.html
 
+def basicmodel():
+    #######
+    # Regression data
+    #######
 
-#######
-# Regression data
-#######
+    data1 = pd.read_csv("data/regressiondata.csv")
+    data1['ImportingCountry'] = data1['key2'].astype(str).str[0:3]
+    data1['Year'] = data1['key2'].astype(str).str[-4:].astype(int)
 
-data1 = pd.read_csv("data/regressiondata.csv")
-data1['ImportingCountry'] = data1['key2'].astype(str).str[0:3]
-data1['Year'] = data1['key2'].astype(str).str[-4:].astype(int)
+    ###################################################################
+    # year data
+    data1 = data1[(data1['Year'] >= 1948) & (data1['Year'] <= 2019)]
+    ###################################################################
 
-###################################################################
-# year data
-data1 = data1[(data1['Year'] >= 1948) & (data1['Year'] <= 2019)]
-###################################################################
+    data1.drop(columns=["Unnamed: 0", "key2", "key3"],inplace=True)
+    print(data1)
+    data1['area_importer'] = data1['area_importer'].astype(float)
+    printme(data1)
 
-data1.drop(columns=["Unnamed: 0", "key2", "key3"],inplace=True)
-print(data1)
-data1['area_importer'] = data1['area_importer'].astype(float)
-printme(data1)
+    ### select 10 countries
+    #countries = ["NLD","DEU","USA","KOR","JPN","CHN","CAN","FRA","ESP","GBR","ITA","POL","SWE","NOR","COL"]
+    countries = data1['ImportingCountry'].unique()
+    data1 = data1[data1['ImportingCountry'].isin(countries)]
 
-### select 10 countries
-#countries = ["NLD","DEU","USA","KOR","JPN","CHN","CAN","FRA","ESP","GBR","ITA","POL","SWE","NOR","COL"]
-countries = data1['ImportingCountry'].unique()
-data1 = data1[data1['ImportingCountry'].isin(countries)]
+    #################
+    #data1['constant'] = 1
+    #################
+    data1[data1['instrument']==0] = np.nan
+    data1['instrument_log'] = np.where(~data1['instrument'].isnull(), np.log(data1['instrument']), data1['instrument'])
+    ##################
+    data1['dist_log'] = np.log(data1['dist'])
+    ##################
+    data1['pop_importer_log'] = np.log(data1['pop_importer'])
+    ##################
+    data1['pop_exporter_log'] = np.log(data1['pop_exporter'])
+    ##################
+    data1['area_importer_log'] = np.log(data1['area_importer'])
+    ##################
+    data1['area_exporter_log'] = np.log(data1['area_exporter'])
+    ##################
+    data1['landlocked'] = data1['landlocked_importer'] + data1['landlocked_exporter']
 
-#################
-#data1['constant'] = 1
-#################
-data1[data1['instrument']==0] = np.nan
-data1['instrument_log'] = np.where(~data1['instrument'].isnull(), np.log(data1['instrument']), data1['instrument'])
-##################
-data1['dist_log'] = np.log(data1['dist'])
-##################
-data1['pop_importer_log'] = np.log(data1['pop_importer'])
-##################
-data1['pop_exporter_log'] = np.log(data1['pop_exporter'])
-##################
-data1['area_importer_log'] = np.log(data1['area_importer'])
-##################
-data1['area_exporter_log'] = np.log(data1['area_exporter'])
-##################
-data1['landlocked'] = data1['landlocked_importer'] + data1['landlocked_exporter']
+    data1['dist_border_log'] = data1['dist_log'] * data1['border']
+    data1['pop_importer_border_log'] = data1['pop_importer_log'] * data1['border']
+    data1['pop_exporter_border_log'] = data1['pop_exporter_log'] * data1['border']
+    data1['area_importer_border_log'] = data1['area_importer_log'] * data1['border']
+    data1['area_exporter_border_log'] = data1['area_exporter_log'] * data1['border']
 
-data1['dist_border_log'] = data1['dist_log'] * data1['border']
-data1['pop_importer_border_log'] = data1['pop_importer_log'] * data1['border']
-data1['pop_exporter_border_log'] = data1['pop_exporter_log'] * data1['border']
-data1['area_importer_border_log'] = data1['area_importer_log'] * data1['border']
-data1['area_exporter_border_log'] = data1['area_exporter_log'] * data1['border']
-
-mi_data = data1.set_index(['ImportingCountry', 'Year'], drop = True)
-#mi_data['Year'] = pd.Categorical(mi_data['Year'])
-
-
-mi_data.corr().to_csv("corr.csv")
-
-model_1948_2019 = PanelOLS(mi_data.instrument_log, mi_data[['dist_log','pop_importer_log','pop_exporter_log','area_importer_log','area_exporter_log',
-                                                'landlocked','border', 'dist_border_log', 'pop_importer_border_log',
-                                                'pop_exporter_border_log']], entity_effects=False, time_effects=True, drop_absorbed=True)
-print(model_1948_2019.fit().summary)
-
-plt.rc("figure", figsize=(12, 7))
-plt.text(0.01, 0.05, model_1948_2019.fit(), {"fontsize": 10}, fontproperties="monospace")
-plt.axis("off")
-plt.tight_layout()
-plt.gcf().tight_layout(pad=1.0)
-plt.savefig("alldata_model.png", transparent=False)
+    mi_data = data1.set_index(['ImportingCountry', 'Year'], drop = True)
+    #mi_data['Year'] = pd.Categorical(mi_data['Year'])
 
 
+    mi_data.corr().to_csv("corr.csv")
+
+    model_1948_2019 = PanelOLS(mi_data.instrument_log, mi_data[['dist_log','pop_importer_log','pop_exporter_log','area_importer_log','area_exporter_log',
+                                                    'landlocked','border', 'dist_border_log', 'pop_importer_border_log',
+                                                    'pop_exporter_border_log']], entity_effects=True, time_effects=False, drop_absorbed=True)
+    print(model_1948_2019.fit().summary)
+
+    plt.rc("figure", figsize=(12, 7))
+    plt.text(0.01, 0.05, model_1948_2019.fit(), {"fontsize": 10}, fontproperties="monospace")
+    plt.axis("off")
+    plt.tight_layout()
+    plt.gcf().tight_layout(pad=1.0)
+    plt.savefig("alldata_model.png", transparent=False)
 
 ######
 # Estimated Effects
@@ -322,7 +320,7 @@ def estimatedTimeEffects():
     timeEffect.set_index("Year", inplace=True)
     timeEffect.plot(title="Time Effects")
     plt.savefig("TimeEffects.png")
-estimatedTimeEffects()
+#estimatedTimeEffects()
 
 def modelsforComparison():
 
