@@ -20,8 +20,15 @@ pd.set_option("display.max_columns", 1000)
 # main paper: chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://www.imf.org/external/pubs/ft/wp/2003/wp0337.pdf
 
 # IMF: https://data.imf.org/?sk=9d6028d4f14a464ca2f259b2cd424b85
-# see main paper for explanation of limits
-# data should be logged
+# go to Bulk Down icon at right upper corner of above page (downward facing arrow), you will get an email 
+# when your download is ready, but you can also go to MyData in the upper right corner
+# I choose 1948 to 2023 yearly data.
+# see main paper for explanation and limits of data
+# all data should be logged for analysis
+#####################
+# Data should be put in data folder so that the following works (mine data is called: DOT_06-02-2024 11-13-24-61_timeSeries.csv):
+#####################
+NAME_OF_DOT_FILE = r"data\DOT_06-02-2024 11-13-24-61_timeSeries.csv"
 
 # IMF conversion codes
 # https://www.imf.org/-/media/Websites/IMF/imported-datasets/external/pubs/ft/wp/2011/Data/_wp11154.ashx
@@ -36,7 +43,7 @@ class Trade_Regression:
         self.ImportExport = ImportExport
 
     def maintradedata(self):
-        trade_data1 = pd.read_csv(r"data\DOT_06-02-2024 11-13-24-61_timeSeries.csv")
+        trade_data1 = pd.read_csv(NAME_OF_DOT_FILE )
         # Belgium-Luxembourg is in the above database 126, both as importer and exporter
 
         ######
@@ -334,8 +341,8 @@ def runmodel(ImpExp):
 
 ############################### Start main code 30 minutes ###############################
 # "Export_FOB" or "Import_CIF"
-# runmodel("Export_FOB")  # over 600 MB
-# runmodel("Import_CIF")  # over 600 MB
+runmodel("Export_FOB")  # over 600 MB
+runmodel("Import_CIF")  # over 600 MB
 # ###############
 # # fix: add import countries areas
 # ###############
@@ -354,7 +361,6 @@ def fix_nowaddimportcountryArea():
 fix_nowaddimportcountryArea()
 
 ############################### End main code ###############################
-
 
 ################
 # Exports seperately
