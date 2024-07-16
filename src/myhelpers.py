@@ -18,7 +18,7 @@ def printme(data):
 def importersNLD(exportertoNLD):
     # checks--https://data.imf.org/regular.aspx?key=61013712
    
-    nld1 = pd.read_csv('instrument101.csv', index_col=[0])
+    nld1 = pd.read_csv(r'output/instrument101.csv', index_col=[0])
     nld1 = nld1[['ImporterValueCIF', 'Importer_from_Exporter', 'Year']]
     nld2 = nld1[nld1['Importer_from_Exporter'] == "NLD_DEU"]
     print(nld2)
@@ -33,7 +33,7 @@ def importersNLD(exportertoNLD):
 def exportersNLD(exportertoNLD):
     # checks--https://data.imf.org/regular.aspx?key=61013712
    
-    nld1 = pd.read_csv('instrument101.csv', index_col=[0])
+    nld1 = pd.read_csv(r'output/instrument101.csv', index_col=[0])
     nld1 = nld1[['ExportedValueFOB', 'Exporter_to_Importer', 'Year']]
     nld2 = nld1[nld1['Exporter_to_Importer'] == "NLD_DEU"]
     print(nld2)
@@ -46,7 +46,7 @@ def exportersNLD(exportertoNLD):
 #exportersNLD('DEU')
 
 def tradebalanceNLD(counterParty):
-    nlddata = pd.read_csv('instrument101.csv', index_col=[0])
+    nlddata = pd.read_csv(r'output/instrument101.csv', index_col=[0])
     exportfrom = nlddata[['ExportedValueFOB', 'Exporter_to_Importer', 'Year']]
     exportfrom = exportfrom[exportfrom['Exporter_to_Importer'] == counterParty]
     print(exportfrom)
@@ -73,7 +73,7 @@ def tradebalanceNLD(counterParty):
 def totalexportsperyear(country1):
     # checked: https://data.imf.org/?sk=9d6028d4-f14a-464c-a2f2-59b2cd424b85&sid=1514498232936
 
-    nlddata = pd.read_csv('instrument101.csv', index_col=[0])
+    nlddata = pd.read_csv(r'output/instrument101.csv', index_col=[0])
     exportfrom = nlddata[['ExportedValueFOB', 'Exporter_to_Importer', 'Year']]
     
     exportfrom['Exporter'] = exportfrom['Exporter_to_Importer'].str[0:3]
@@ -87,7 +87,7 @@ def totalexportsperyear(country1):
 def totalimportsperyear(country):
     # checked: https://data.imf.org/?sk=9d6028d4-f14a-464c-a2f2-59b2cd424b85&sid=1514498232936
 
-    nlddata = pd.read_csv('instrument101.csv', index_col=[0])
+    nlddata = pd.read_csv(r'output/instrument101.csv', index_col=[0])
     importfrom = nlddata[['ImporterValueCIF', 'Importer_from_Exporter', 'Year']]
     
     importfrom['Importer'] = importfrom['Importer_from_Exporter'].str[0:3]

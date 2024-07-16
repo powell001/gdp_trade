@@ -3,36 +3,34 @@ import matplotlib.pyplot as plt
 import numpy as np
 from myhelpers import printme, totalexportsperyear, totalimportsperyear
 from linearmodels import PanelOLS
+pd.options.mode.chained_assignment = None  # default='warn'
 
 ################
 # Data for regressions
 ################
-
 def selectdataRegression():
     ### Select then merge
 
     #main
-    maindata1 = pd.read_csv("data/allStates_AllYears_Imports_CIF.csv")
-    maindata1.rename(columns={'area': 'area_exporter', 'landlocked': 'landlocked_exporter', 'contig': 'border'}, inplace = True)
+    maindata1 = pd.read_csv(r"output/allStates_AllYears_Imports_CIF.csv")
+    maindata1.rename(columns={'area': 'area_exporter', 'landlocked': 'landlocked_exporter', 'landlocked_importer_y': 'landlocked_importer', 'contig': 'border'}, inplace = True)
     maindata1['key2'] = maindata1['iso_o'].astype(str) + "_" + maindata1['iso_d'].astype(str) + "_" + maindata1['Year'].astype(str)
     data1 = maindata1.loc[:, ['key2', 'dist','pop_importer', 'pop_exporter', 'area_importer', 'area_exporter', 'landlocked_importer', 'landlocked_exporter', 'border']]
 
     #tau
-    taudata1 = pd.read_csv("instrument101.csv")
+    taudata1 = pd.read_csv(r"output/instrument101.csv")
     taudata1 = taudata1[['key3', 'instrument']]
 
     regressiondata = pd.merge(data1, taudata1, left_on="key2", right_on="key3")
-    regressiondata.to_csv("data/regressiondata.csv")
-
+    regressiondata.to_csv(r"output/regressiondata.csv")
 #selectdataRegression()
 
 ################
 # Agumented Dickey-Fuller
 ################
-
 def allexp_imp_allcountries_years():
 
-    maindata1 = pd.read_csv("data/allStates_AllYears_Imports_CIF.csv", usecols=['iso_o'])
+    maindata1 = pd.read_csv(r"output/allStates_AllYears_Imports_CIF.csv", usecols=['iso_o'])
     allcountries = list(set(maindata1['iso_o'].values.tolist()))
 
     allexports = []
@@ -45,7 +43,7 @@ def allexp_imp_allcountries_years():
         expt1['key1'] = expt1['exporter'] + "_" + expt1['Year'].astype(str)
         expt1.drop(columns = ['Year', 'exporter'], inplace = True)
         allexports.append(expt1)
-    pd.concat(allexports).to_csv("allexports_eachcountry.csv")
+    pd.concat(allexports).to_csv(r"output/allexports_eachcountry.csv")
 
     for j in allcountries:
         print(j)
@@ -55,27 +53,26 @@ def allexp_imp_allcountries_years():
         imp1['key1'] = imp1['importer'] + "_" + imp1['Year'].astype(str)        
         imp1.drop(columns = ['Year', 'importer'], inplace = True)
         allimports.append(imp1)
-    pd.concat(allimports).to_csv("allimports_eachcountry.csv")
-
+    pd.concat(allimports).to_csv(r"output/allimports_eachcountry.csv")
 #allexp_imp_allcountries_years()
 
 def trade_share():
     #### Trade share
     # combine exports per year wiht imports per year
-    exp1 = pd.read_csv("allexports_eachcountry.csv")
-    imp1 = pd.read_csv("allimports_eachcountry.csv")
+    exp1 = pd.read_csv(r"output/allexports_eachcountry.csv")
+    imp1 = pd.read_csv(r"output/allimports_eachcountry.csv")
 
     tshare1 = pd.merge(exp1, imp1, left_on="key1", right_on="key1")
     tshare1 = tshare1[['key1', 'ExportedValueFOB', 'ImporterValueCIF']]
 
-    maindata = pd.read_csv(r"data/allStates_AllYears_Imports_CIF.csv", usecols=['iso_o', 'Year', 'cgdpe_importer'])
+    maindata = pd.read_csv(r"output/allStates_AllYears_Imports_CIF.csv", usecols=['iso_o', 'Year', 'cgdpe_importer'])
     maindata['key1'] = maindata['iso_o'] + "_" + maindata['Year'].astype(str)
     maindata.drop(columns=['Year', 'iso_o'],inplace=True)
     maindata.drop_duplicates(inplace=True)
 
     data1 = pd.merge(tshare1, maindata, left_on="key1", right_on="key1", how="left")
     data1["trade_share"] = 100*((data1['ExportedValueFOB'] + data1['ImporterValueCIF'])/(data1['cgdpe_importer']*1000000))
-    data1.to_csv("trade_share_data.csv")
+    data1.to_csv(r"output/trade_share_data.csv")
 
     data1.dropna(inplace=True)
     data1 = data1[(data1['trade_share'] > 0) & (data1['trade_share'] < 100)]
@@ -83,14 +80,12 @@ def trade_share():
     #print(data1)
 
     return data1
-
 #trade_share()
 import statsmodels.tsa.stattools as ts
 
 ############################
 # unit test trade share
 ############################
-
 rejectunitroot = []
 def adf_trade_share(dataseries):
 
@@ -101,7 +96,7 @@ def adf_trade_share(dataseries):
 
 def loop_adf_test_trade_share():
 
-    maindata1 = pd.read_csv("data/allStates_AllYears_Imports_CIF.csv", usecols=['iso_o'])
+    maindata1 = pd.read_csv(r"output/allStates_AllYears_Imports_CIF.csv", usecols=['iso_o'])
     allcountries = list(set(maindata1['iso_o'].values.tolist()))
 
     trd1 = trade_share()
@@ -141,7 +136,6 @@ def loop_adf_test_trade_share():
 
     print("Reject Unit Root: ", count_rejections)
     print("Fail to reject Unit Root: ", count_fail_rejections)
-
 #loop_adf_test_trade_share()
 
 ###########################
@@ -158,7 +152,7 @@ def adf_gdppop_share(dataseries):
 
 def loop_adf_gdppop():
 
-    maindata1 = pd.read_csv("data/allStates_AllYears_Imports_CIF.csv", usecols=['Year', 'iso_o', 'rgdpo_importer', 'pop_importer'])
+    maindata1 = pd.read_csv(r"output/allStates_AllYears_Imports_CIF.csv", usecols=['Year', 'iso_o', 'rgdpo_importer', 'pop_importer'])
     maindata1['key1'] = maindata1['iso_o'] + "_" + maindata1['Year'].astype(str)
     maindata1.drop_duplicates(subset=['key1'], keep='last', inplace=True)
     maindata1['gdp_per_pop'] = maindata1['rgdpo_importer']/maindata1['pop_importer']
@@ -199,7 +193,6 @@ def loop_adf_gdppop():
 
     print("Reject Unit Root: ", count_rejections)
     print("Fail to reject Unit Root: ", count_fail_rejections)
-
 #loop_adf_gdppop()
 
 ###########################
@@ -219,7 +212,7 @@ def basicmodel():
     # Regression data
     #######
 
-    data1 = pd.read_csv("data/regressiondata.csv")
+    data1 = pd.read_csv(r"output/regressiondata.csv")
     data1['ImportingCountry'] = data1['key2'].astype(str).str[0:3]
     data1['Year'] = data1['key2'].astype(str).str[-4:].astype(int)
 
@@ -233,7 +226,7 @@ def basicmodel():
     data1['area_importer'] = data1['area_importer'].astype(float)
     printme(data1)
 
-    ### select 10 countries
+    ### select 10 countries for testing
     #countries = ["NLD","DEU","USA","KOR","JPN","CHN","CAN","FRA","ESP","GBR","ITA","POL","SWE","NOR","COL"]
     countries = data1['ImportingCountry'].unique()
     data1 = data1[data1['ImportingCountry'].isin(countries)]
@@ -265,9 +258,7 @@ def basicmodel():
     mi_data = data1.set_index(['ImportingCountry', 'Year'], drop = True)
     #mi_data['Year'] = pd.Categorical(mi_data['Year'])
 
-
     mi_data.corr().to_csv("corr.csv")
-
     model_1948_2019 = PanelOLS(mi_data.instrument_log, mi_data[['dist_log','pop_importer_log','pop_exporter_log','area_importer_log','area_exporter_log',
                                                     'landlocked','border', 'dist_border_log', 'pop_importer_border_log',
                                                     'pop_exporter_border_log']], entity_effects=True, time_effects=False, drop_absorbed=True)
@@ -278,16 +269,20 @@ def basicmodel():
     plt.axis("off")
     plt.tight_layout()
     plt.gcf().tight_layout(pad=1.0)
-    plt.savefig("alldata_model.png", transparent=False)
+    plt.savefig(r"output/alldata_model.png", transparent=False)
+
+    return model_1948_2019
+
+model_1948_2019 = basicmodel()
 
 ######
 # Estimated Effects
 ######
-def estimatedEntityEffects():
-    estEffect = model_1948_2019.fit().estimated_effects
-    estEffect.to_csv("data\estEffect.csv")
+def estimatedEntityEffects(model):
+    estEffect = model.fit().estimated_effects
+    estEffect.to_csv(r"data/estEffect.csv")
 
-    estEffect = pd.read_csv("data\estEffect.csv", index_col=[0])
+    estEffect = pd.read_csv(r"data/estEffect.csv", index_col=[0])
     estEffect['ISO3'] = estEffect.index
     estEffect.drop_duplicates(keep='first', inplace=True)
     state1 = estEffect[estEffect['Year'] == 2019]
@@ -306,21 +301,22 @@ def estimatedEntityEffects():
     ax2.set_title("Bottom 25")
 
     plt.savefig("EntityEffects.png")
-#estimatedEntityEffects()
 
-def estimatedTimeEffects():
+estimatedEntityEffects(model_1948_2019)
 
-    estEffect = model_1948_2019.fit().estimated_effects
+def estimatedTimeEffects(model):
+
+    estEffect = model.fit().estimated_effects
     print(estEffect)
-    estEffect.to_csv("data\estEffect.csv")
-    estEffect = pd.read_csv("data\estEffect.csv", index_col=[0])
+    estEffect.to_csv(r"data/estEffect.csv")
+    estEffect = pd.read_csv(r"data/estEffect.csv", index_col=[0])
     timeEffect = estEffect[['Year', 'estimated_effects']]
     timeEffect.drop_duplicates(subset=['Year'], inplace=True)
     timeEffect.sort_values(["Year"], ascending=True, inplace=True)
     timeEffect.set_index("Year", inplace=True)
     timeEffect.plot(title="Time Effects")
     plt.savefig("TimeEffects.png")
-#estimatedTimeEffects()
+estimatedTimeEffects(model_1948_2019)
 
 def modelsforComparison():
 
@@ -328,7 +324,7 @@ def modelsforComparison():
     # Regression data
     #######
 
-    data1 = pd.read_csv("data/regressiondata.csv")
+    data1 = pd.read_csv(r"output/regressiondata.csv")
     data1['ImportingCountry'] = data1['key2'].astype(str).str[0:3]
     data1['Year'] = data1['key2'].astype(str).str[-4:].astype(int)
 
@@ -382,13 +378,11 @@ def modelsforComparison():
                                                     'pop_exporter_border_log']], entity_effects=True, drop_absorbed=True)
     print(model_1960_1992.fit().summary)
 
-
-
     #######
     # Regression data
     #######
 
-    data1 = pd.read_csv("data/regressiondata.csv")
+    data1 = pd.read_csv(r"output/regressiondata.csv")
     data1['ImportingCountry'] = data1['key2'].astype(str).str[0:3]
     data1['Year'] = data1['key2'].astype(str).str[-4:].astype(int)
 
@@ -402,7 +396,7 @@ def modelsforComparison():
     data1['area_importer'] = data1['area_importer'].astype(float)
     printme(data1)
 
-    ### select 10 countries
+    ### select 10 countries for testing purposes
     countries = ["NLD","DEU","USA","KOR","JPN","CHN","CAN","FRA","ESP","GBR","ITA","POL","SWE","NOR","COL","IND","ARG","ZAF","IRL", "PAK"]
     #countries = data1['ImportingCountry'].unique()
     data1 = data1[data1['ImportingCountry'].isin(countries)]
@@ -454,3 +448,5 @@ def modelsforComparison():
     plt.tight_layout()
     plt.gcf().tight_layout(pad=1.0)
     plt.savefig("iv_model.png", transparent=False)
+
+modelsforComparison()
